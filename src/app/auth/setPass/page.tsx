@@ -1,8 +1,10 @@
 import SetPass from '@/src/components/auht/SetPass'
-import React from 'react'
+import React, { Suspense } from 'react'
 
 export default function page() {
   return (
-    <div><SetPass></SetPass></div>
+    <Suspense fallback={<div>Loading...</div>}>
+      <SetPass />
+    </Suspense>
   )
 }
