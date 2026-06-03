@@ -228,7 +228,7 @@ export default function Login() {
         <p className="text-center text-sm text-gray-500">
           Don&apos;t have account?{" "}
           <Link
-            href="/admin/dashboard"
+            href="/admin/productManagement"
             className="font-bold"
             style={{ color: "#ba5f23" }}
           >

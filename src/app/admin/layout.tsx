@@ -8,6 +8,7 @@ import {
   MdDashboard,
   MdOutlinePets,
   MdOutlineEmail,
+  MdOutlineSettings,
 } from "react-icons/md";
 import { FiMenu, FiX } from "react-icons/fi";
 import { LuPackage, LuTag, LuUsers } from "react-icons/lu";
@@ -61,25 +62,25 @@ const resolveImageUrl = (value: unknown): string => {
 };
 
 const navItems = [
-  { label: "Dashboard", href: "/admin/dashboard", icon: MdDashboard },
-  {
-    label: "User Management",
-    href: "/admin/userManagement",
-    icon: LuUsers,
-  },
+  // { label: "Dashboard", href: "/admin/dashboard", icon: MdDashboard },
+  // {
+  //   label: "User Management",
+  //   href: "/admin/userManagement",
+  //   icon: LuUsers,
+  // },
   {
     label: "Product Management",
     href: "/admin/productManagement",
     icon: LuPackage,
   },
-  {
-    label: "Dog Information",
-    href: "/admin/dogInformation",
-    icon: MdOutlinePets,
-  },
-  { label: "Product Deals", href: "/admin/productDeals", icon: LuTag },
-  { label: "Email List", href: "/admin/emailList", icon: MdOutlineEmail },
-  // { label: "Settings", href: "/admin/settings", icon: MdOutlineSettings },
+  // {
+  //   label: "Dog Information",
+  //   href: "/admin/dogInformation",
+  //   icon: MdOutlinePets,
+  // },
+  // { label: "Product Deals", href: "/admin/productDeals", icon: LuTag },
+  // { label: "Email List", href: "/admin/emailList", icon: MdOutlineEmail },
+  { label: "Settings", href: "/admin/settings", icon: MdOutlineSettings },
 ];
 
 export default function DashboardLayout({
@@ -149,7 +150,7 @@ export default function DashboardLayout({
   const sidebarContent = (
     <>
       {/* Logo */}
-      <Link href="/admin/dashboard">
+      {/* <Link href="/admin/dashboard"> */}
         <div className="mb-8 flex justify-center items-center gap-2 px-2 lg:mb-12">
           <Image
             src={Logo}
@@ -159,7 +160,7 @@ export default function DashboardLayout({
             className="lg:w-42 md:w-42 "
           />
         </div>
-      </Link>
+      {/* </Link> */}
 
       {/* Nav */}
       <nav className="flex flex-1 flex-col gap-1">

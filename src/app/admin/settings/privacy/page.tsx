@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiChevronLeft } from "react-icons/fi";
-import { toast } from "sonner";
-import baseApi from "@/src/api/baseApi";
-import { ENDPOINTS } from "@/src/api/endPoints";
+
 import {
   BtnBold,
   BtnBulletList,
@@ -88,57 +86,6 @@ const getPolicyHtml = (response: PrivacyPolicyResponse | unknown): string => {
 export default function SettingsPrivacyPage() {
   const router = useRouter();
   const [html, setHtml] = useState(DEFAULT_POLICY_HTML);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchPrivacyPolicy = async () => {
-      try {
-        const response = await baseApi.get(ENDPOINTS.privacyPolicy);
-
-        if (!isMounted) {
-          return;
-        }
-
-        setHtml(getPolicyHtml(response.data));
-      } catch (error) {
-        console.error("Failed to load privacy policy", error);
-        toast.error("Failed to load privacy policy");
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void fetchPrivacyPolicy();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const handleSave = () => {
-    const savePrivacyPolicy = async () => {
-      setIsSaving(true);
-
-      try {
-        await baseApi.patch(ENDPOINTS.privacyPolicy, {
-          content: html,
-        });
-        toast.success("Privacy policy updated successfully");
-      } catch (error) {
-        console.error("Failed to update privacy policy", error);
-        toast.error("Failed to update privacy policy");
-      } finally {
-        setIsSaving(false);
-      }
-    };
-
-    void savePrivacyPolicy();
-  };
 
   return (
     <div className="min-h-screen">
@@ -156,11 +103,11 @@ export default function SettingsPrivacyPage() {
 
           <button
             type="button"
-            onClick={handleSave}
-            disabled={isLoading || isSaving}
-            className="rounded-md bg-white px-5 py-1.5 text-[15px] font-medium text-[#b76424] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md bg-white px-5 py-1.5 text-[15px] font-medium text-[#b76424] cursor-not-allowed opacity-60"
+            disabled
+            title="Static content - not editable"
           >
-            {isSaving ? "Saving..." : "Save"}
+            Save
           </button>
         </div>
 
@@ -170,7 +117,7 @@ export default function SettingsPrivacyPage() {
               <Editor
                 value={html}
                 onChange={(event) => setHtml(event.target.value)}
-                disabled={isLoading}
+                disabled={true}
                 containerProps={{
                   style: {
                     minHeight: "620px",
@@ -189,9 +136,6 @@ export default function SettingsPrivacyPage() {
                   background: "#f7f7f8",
                 }}
               >
-                {isLoading && (
-                  <div className="px-4 py-3 text-[14px] text-[#6b7280]">Loading privacy policy...</div>
-                )}
                 <Toolbar>
                   <BtnFontSize />
                   <Separator />
