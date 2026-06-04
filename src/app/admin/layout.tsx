@@ -151,7 +151,7 @@ export default function DashboardLayout({
     <>
       {/* Logo */}
       {/* <Link href="/admin/dashboard"> */}
-        <div className="mb-8 flex justify-center items-center gap-2 px-2 lg:mb-12">
+        <div className="mb-0 flex justify-center items-center gap-2 px-2 lg:mb-0">
           <Image
             src={Logo}
             alt="Everidog"
