@@ -112,7 +112,7 @@ export default function Login() {
 
       toast.success("Login successful");
 
-      router.push("/admin/dashboard");
+      router.push("/admin/productManagement");
     } catch (error: unknown) {
       toast.error(getApiErrorMessage(error));
     } finally {
