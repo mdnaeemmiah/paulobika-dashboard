@@ -1,102 +1,227 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { FiEye, FiSearch, FiTrash2 } from "react-icons/fi";
+import { FiEye, FiSearch, FiTrash2, FiUsers } from "react-icons/fi";
+import { toast } from "sonner";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
+import axios from "axios";
 
 type UserStatus = "Active" | "Inactive" | "Suspended" | "Blocked";
 
+type ApiUserResponse = {
+  id: number;
+  name: string;
+  email: string;
+  is_active: boolean;
+  created_at: string;
+};
+
 type UserRow = {
-  id: string;
+  id: number;
   userName: string;
   email: string;
-  dogName: string;
+  dogName?: string;
   signupDate: string;
   status: UserStatus;
-  phone: string;
-  breed: string;
-  age: string;
-  weight: string;
+  phone?: string;
+  breed?: string;
+  age?: string;
+  weight?: string;
   allergies: string[];
   foodPreferences: string[];
 };
 
 type DeleteTarget = {
-  id: string;
+  id: string | number;
   userName: string;
 };
 
-const STATIC_USERS: UserRow[] = [
-  {
-    id: "user-1",
-    userName: "Brooklyn Simmons",
-    email: "brooklyn@example.com",
-    dogName: "Milo",
-    signupDate: "Jun 01, 2026",
-    status: "Active",
-    phone: "+1 555 0101",
-    breed: "Golden Retriever",
-    age: "3 years",
-    weight: "24 kg",
-    allergies: ["Chicken"],
-    foodPreferences: ["Dry Food"],
-  },
-  {
-    id: "user-2",
-    userName: "Cody Fisher",
-    email: "cody@example.com",
-    dogName: "Luna",
-    signupDate: "May 24, 2026",
-    status: "Inactive",
-    phone: "+1 555 0102",
-    breed: "Labrador",
-    age: "5 years",
-    weight: "28 kg",
-    allergies: ["Beef"],
-    foodPreferences: ["Wet Food"],
-  },
-  {
-    id: "user-3",
-    userName: "Leslie Alexander",
-    email: "leslie@example.com",
-    dogName: "Rocky",
-    signupDate: "May 10, 2026",
-    status: "Suspended",
-    phone: "+1 555 0103",
-    breed: "Beagle",
-    age: "2 years",
-    weight: "12 kg",
-    allergies: ["Dairy"],
-    foodPreferences: ["Fresh Food"],
-  },
-  {
-    id: "user-4",
-    userName: "Jane Cooper",
-    email: "jane@example.com",
-    dogName: "Bella",
-    signupDate: "Apr 18, 2026",
-    status: "Blocked",
-    phone: "+1 555 0104",
-    breed: "Husky",
-    age: "4 years",
-    weight: "20 kg",
-    allergies: ["Soy"],
-    foodPreferences: ["Prescription"],
-  },
-];
+type StatCard = {
+  title: string;
+  value: string;
+  change: string;
+  icon: React.ReactNode;
+};
+
+type UserStats = {
+  totalUsers: number;
+  activeUsers: number;
+};
+
+type ApiStatsResponse = {
+  total_users: number;
+  total_active_users: number;
+};
+
+type ApiGraphDataResponse = {
+  year: number;
+  data: Array<{
+    month: number;
+    month_name: string;
+    new_users: number;
+    cumulative_active_users: number;
+  }>;
+};
+
+type GraphPoint = {
+  month: string;
+  value: number;
+};
 
 const PAGE_SIZE = 8;
 
+const formatCount = (value: number): string => {
+  return value.toLocaleString("en-US");
+};
+
+const defaultMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const defaultGraphPoints: GraphPoint[] = defaultMonths.map((month) => ({ month, value: 0 }));
+const availableYears = [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033];
+
+const formatDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+};
+
+const transformApiUserToUserRow = (apiUser: ApiUserResponse): UserRow => {
+  return {
+    id: apiUser.id,
+    userName: apiUser.name,
+    email: apiUser.email,
+    dogName: undefined,
+    signupDate: formatDate(apiUser.created_at),
+    status: apiUser.is_active ? "Active" : "Inactive",
+    phone: undefined,
+    breed: undefined,
+    age: undefined,
+    weight: undefined,
+    allergies: [],
+    foodPreferences: [],
+  };
+};
+
 export default function UserManagementPage() {
-  const [users, setUsers] = useState<UserRow[]>(STATIC_USERS);
-  const [isLoading] = useState(false);
-  const [fetchError] = useState("");
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
   const [actionError, setActionError] = useState("");
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | UserStatus | "blocked-list">("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Stats states
+  const [stats, setStats] = useState<UserStats>({ totalUsers: 0, activeUsers: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState("");
+  
+  // Graph states
+  const [selectedYear, setSelectedYear] = useState(2026);
+  const [isGraphLoading, setIsGraphLoading] = useState(true);
+  const [graphError, setGraphError] = useState("");
+  const [graphData, setGraphData] = useState<GraphPoint[]>(defaultGraphPoints);
+
+  // Fetch users on component mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoading(true);
+      setFetchError("");
+      try {
+        const response = await baseApi.get(ENDPOINTS.userManagement);
+        if (response.data && Array.isArray(response.data)) {
+          const transformedUsers = response.data.map((apiUser: ApiUserResponse) =>
+            transformApiUserToUserRow(apiUser)
+          );
+          setUsers(transformedUsers);
+        } else if (response.data?.results && Array.isArray(response.data.results)) {
+          const transformedUsers = response.data.results.map((apiUser: ApiUserResponse) =>
+            transformApiUserToUserRow(apiUser)
+          );
+          setUsers(transformedUsers);
+        } else {
+          setFetchError("Invalid data format from server");
+        }
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          setFetchError(err.response?.data?.message || "Failed to load users");
+        } else {
+          setFetchError("Failed to load users");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // Fetch total users stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      setStatsLoading(true);
+      setStatsError("");
+      try {
+        const response = await baseApi.get<ApiStatsResponse>(ENDPOINTS.totalUsers);
+        if (response.data) {
+          setStats({
+            totalUsers: response.data.total_users,
+            activeUsers: response.data.total_active_users,
+          });
+        }
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          setStatsError(err.response?.data?.message || "Failed to load stats");
+        } else {
+          setStatsError("Failed to load stats");
+        }
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Fetch graph data
+  useEffect(() => {
+    const fetchGraphData = async () => {
+      setIsGraphLoading(true);
+      setGraphError("");
+      try {
+        const response = await baseApi.get<ApiGraphDataResponse>(
+          ENDPOINTS.graphData(selectedYear)
+        );
+        if (response.data?.data) {
+          const transformedData = response.data.data.map((item) => ({
+            month: item.month_name,
+            value: item.cumulative_active_users,
+          }));
+          setGraphData(transformedData);
+        }
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          setGraphError(err.response?.data?.message || "Failed to load graph data");
+        } else {
+          setGraphError("Failed to load graph data");
+        }
+      } finally {
+        setIsGraphLoading(false);
+      }
+    };
+
+    fetchGraphData();
+  }, [selectedYear]);
 
   const filteredUsers = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -106,7 +231,7 @@ export default function UserManagementPage() {
         keyword.length === 0 ||
         user.userName.toLowerCase().includes(keyword) ||
         user.email.toLowerCase().includes(keyword) ||
-        user.dogName.toLowerCase().includes(keyword);
+        (user.dogName?.toLowerCase().includes(keyword) ?? false);
 
       if (!matchesSearch) return false;
 
@@ -124,9 +249,56 @@ export default function UserManagementPage() {
     return filteredUsers.slice(start, start + PAGE_SIZE);
   }, [filteredUsers, safeCurrentPage]);
 
-  const handleDeleteClick = (id: string, userName: string) => {
+  const handleDeleteClick = (id: string | number, userName: string) => {
     setDeleteTarget({ id, userName });
   };
+
+  const statCards = useMemo<StatCard[]>(
+    () => [
+      {
+        title: "Total Users",
+        value: statsLoading ? "Loading..." : formatCount(stats.totalUsers),
+        change: statsError ? statsError : "+12.5% from last month",
+        icon: <FiUsers size={16} />,
+      },
+      {
+        title: "Active Users",
+        value: statsLoading ? "Loading..." : formatCount(stats.activeUsers),
+        change: statsError ? statsError : "+8.2% from last month",
+        icon: <FiUsers size={16} />,
+      },
+    ],
+    [stats, statsLoading, statsError],
+  );
+
+  const linePoints = useMemo<GraphPoint[]>(() => {
+    return graphData.length > 0 ? graphData : defaultGraphPoints;
+  }, [graphData]);
+
+  const graphWidth = 560;
+  const graphHeight = 220;
+  const chartPadding = { top: 16, right: 18, bottom: 32, left: 44 };
+
+  const maxPoint = Math.max(0, ...linePoints.map((point) => point.value));
+  const lineMax = Math.max(5, Math.ceil(maxPoint / 5) * 5);
+  const lineMin = 0;
+  const lineInnerWidth = graphWidth - chartPadding.left - chartPadding.right;
+  const lineInnerHeight = graphHeight - chartPadding.top - chartPadding.bottom;
+
+  const lineToXY = (value: number, index: number) => {
+    const x =
+      chartPadding.left + (index * lineInnerWidth) / Math.max(1, linePoints.length - 1);
+    const y =
+      chartPadding.top + ((lineMax - value) * lineInnerHeight) / (lineMax - lineMin);
+    return { x, y };
+  };
+
+  const linePath = linePoints
+    .map((point, i) => {
+      const { x, y } = lineToXY(point.value, i);
+      return `${i === 0 ? "M" : "L"}${x},${y}`;
+    })
+    .join(" ");
 
   const handleCancelDelete = () => {
     if (isDeleting) {
@@ -142,10 +314,26 @@ export default function UserManagementPage() {
     }
 
     setIsDeleting(true);
-    setUsers((prev) => prev.filter((item) => item.id !== deleteTarget.id));
-    setDeleteTarget(null);
     setActionError("");
-    setIsDeleting(false);
+
+    try {
+      await baseApi.delete(ENDPOINTS.deleteUser(deleteTarget.id));
+      
+      setUsers((prev) => prev.filter((item) => item.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      toast.success("User deleted successfully");
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const errorMsg = err.response?.data?.message || err.response?.data?.msg || "Failed to delete user";
+        setActionError(errorMsg);
+        toast.error(errorMsg);
+      } else {
+        setActionError("Failed to delete user");
+        toast.error("Failed to delete user");
+      }
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const statusPillClass = (status: UserStatus) => {
@@ -157,6 +345,136 @@ export default function UserManagementPage() {
 
   return (
     <div className="relative min-h-screen">
+      {/* Stats Cards */}
+      <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+        {statCards.map((card) => (
+          <div
+            key={card.title}
+            className="hover:scale-105 duration-300 rounded-2xl border border-[#dfe4ea] bg-[#f7f8fa] px-4 py-3"
+          >
+            <div className="mb-2 flex items-center gap-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f6ebe3] text-[#bf6a2d]">
+                {card.icon}
+              </div>
+              <p className="text-[12px] text-[#7a7f87]">{card.title}</p>
+            </div>
+            <p className="text-[24px] leading-none font-semibold text-[#2f343a]">{card.value}</p>
+            <p className="mt-2 text-[11px] font-medium text-[#3f8a5f]">{card.change}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* User Growth Chart */}
+      <div className="mb-4 overflow-hidden rounded-2xl border border-[#d8dde4] bg-[#f7f8fa]">
+        <div className="flex items-center justify-between gap-3 bg-[#b76424] px-4 py-2.5">
+          <h3 className="text-[20px] leading-none font-semibold text-white sm:text-[24px]">User Growth</h3>
+          <select
+            value={selectedYear}
+            onChange={(event) => setSelectedYear(Number(event.target.value))}
+            className="h-9 rounded-lg border border-white/40 bg-white/15 px-2 text-sm font-medium text-white outline-none"
+          >
+            {availableYears.map((year) => (
+              <option key={year} value={year} className="text-[#232a33]">
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="px-4 pb-4 pt-3">
+          {isGraphLoading ? (
+            <div className="flex h-55 items-center justify-center text-sm text-[#7d8592]">Loading user growth...</div>
+          ) : graphError ? (
+            <div className="flex h-55 items-center justify-center text-sm text-[#cf3f3f]">{graphError}</div>
+          ) : (
+            <svg viewBox={`0 0 ${graphWidth} ${graphHeight}`} className="h-55 w-full">
+              {[0, 1, 2, 3, 4].map((step) => {
+                const y = chartPadding.top + (step * lineInnerHeight) / 4;
+                return (
+                  <line
+                    key={`h-${step}`}
+                    x1={chartPadding.left}
+                    y1={y}
+                    x2={graphWidth - chartPadding.right}
+                    y2={y}
+                    stroke="#e5e7eb"
+                    strokeDasharray="3 3"
+                  />
+                );
+              })}
+
+              {linePoints.map((_, i) => {
+                const { x } = lineToXY(0, i);
+                return (
+                  <line
+                    key={`v-${i}`}
+                    x1={x}
+                    y1={chartPadding.top}
+                    x2={x}
+                    y2={graphHeight - chartPadding.bottom}
+                    stroke="#eceff3"
+                    strokeDasharray="2 4"
+                  />
+                );
+              })}
+
+              <line
+                x1={chartPadding.left}
+                y1={chartPadding.top}
+                x2={chartPadding.left}
+                y2={graphHeight - chartPadding.bottom}
+                stroke="#cfd4dc"
+              />
+              <line
+                x1={chartPadding.left}
+                y1={graphHeight - chartPadding.bottom}
+                x2={graphWidth - chartPadding.right}
+                y2={graphHeight - chartPadding.bottom}
+                stroke="#cfd4dc"
+              />
+
+              {[0, 1, 2, 3, 4].map((step) => {
+                const value = Math.round((lineMax * step) / 4);
+                const y = chartPadding.top + ((lineMax - value) * lineInnerHeight) / Math.max(1, lineMax);
+                return (
+                  <text
+                    key={`y-label-${step}`}
+                    x={10}
+                    y={y + 4}
+                    fontSize="11"
+                    fill="#7d8592"
+                  >
+                    {value}
+                  </text>
+                );
+              })}
+
+              {linePoints.map((point, i) => {
+                const { x } = lineToXY(point.value, i);
+                return (
+                  <text
+                    key={`x-label-${point.month}`}
+                    x={x}
+                    y={graphHeight - 10}
+                    textAnchor="middle"
+                    fontSize="11"
+                    fill="#7d8592"
+                  >
+                    {point.month}
+                  </text>
+                );
+              })}
+
+              <path d={linePath} fill="none" stroke="#b76424" strokeWidth="3" strokeLinecap="round" />
+              {linePoints.map((point, i) => {
+                const { x, y } = lineToXY(point.value, i);
+                return <circle key={`dot-${point.month}`} cx={x} cy={y} r="4" fill="#b76424" />;
+              })}
+            </svg>
+          )}
+        </div>
+      </div>
+
       <section className="overflow-hidden rounded-2xl border border-[#d8dde4] bg-[#f7f8fa]">
         <div className="bg-[#b76424] px-4 py-2.5">
           <h2 className="text-[20px] leading-none font-semibold text-white sm:text-[24px] lg:text-[34px]">
@@ -208,7 +526,6 @@ export default function UserManagementPage() {
                 <tr className="border-b border-[#e0e5ea] text-left">
                   <th className="px-3 py-3 text-[14px] font-medium text-[#232a33] sm:px-4 sm:text-[16px] lg:text-[20px]">User Name</th>
                   <th className="px-3 py-3 text-[14px] font-medium text-[#232a33] sm:px-4 sm:text-[16px] lg:text-[20px]">Email</th>
-                  <th className="px-3 py-3 text-[14px] font-medium text-[#232a33] sm:px-4 sm:text-[16px] lg:text-[20px]">Dog Name</th>
                   <th className="px-3 py-3 text-[14px] font-medium text-[#232a33] sm:px-4 sm:text-[16px] lg:text-[20px]">Signup Date</th>
                   <th className="px-3 py-3 text-[14px] font-medium text-[#232a33] sm:px-4 sm:text-[16px] lg:text-[20px]">Status</th>
                   <th className="px-3 py-3 text-[14px] font-medium text-[#232a33] sm:px-4 sm:text-[16px] lg:text-[20px]">Actions</th>
@@ -218,19 +535,19 @@ export default function UserManagementPage() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#7d8592]">
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#7d8592]">
                       Loading users...
                     </td>
                   </tr>
                 ) : fetchError ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#cf3f3f]">
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#cf3f3f]">
                       {fetchError}
                     </td>
                   </tr>
                 ) : pagedUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#7d8592]">
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#7d8592]">
                       No users found.
                     </td>
                   </tr>
@@ -242,9 +559,6 @@ export default function UserManagementPage() {
                       </td>
                       <td className="px-3 py-3 text-[12px] text-[#7a8088] sm:px-4 sm:text-[13px] lg:text-[17px]">
                         {user.email}
-                      </td>
-                      <td className="px-3 py-3 text-[12px] text-[#2f343a] sm:px-4 sm:text-[13px] lg:text-[17px]">
-                        {user.dogName}
                       </td>
                       <td className="px-3 py-3 text-[12px] text-[#7a8088] sm:px-4 sm:text-[13px] lg:text-[17px]">
                         {user.signupDate}

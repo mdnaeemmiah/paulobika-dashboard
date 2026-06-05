@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { FiUsers } from "react-icons/fi";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
+import axios from "axios";
 
 type StatCard = {
   title: string;
@@ -13,6 +16,21 @@ type StatCard = {
 type UserStats = {
   totalUsers: number;
   activeUsers: number;
+};
+
+type ApiStatsResponse = {
+  total_users: number;
+  total_active_users: number;
+};
+
+type ApiGraphDataResponse = {
+  year: number;
+  data: Array<{
+    month: number;
+    month_name: string;
+    new_users: number;
+    cumulative_active_users: number;
+  }>;
 };
 
 type RecentActivityRow = {
@@ -47,7 +65,10 @@ const barPoints = [
 ];
 
 export default function DashboardPage() {
-  const [stats] = useState<UserStats>({ totalUsers: 2540, activeUsers: 1875 });
+  const [stats, setStats] = useState<UserStats>({ totalUsers: 0, activeUsers: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState("");
+  
   const [activities] = useState<RecentActivityRow[]>([
     {
       user: "Brooklyn Simmons",
@@ -74,46 +95,87 @@ export default function DashboardPage() {
   const [isActivityLoading] = useState(false);
   const [activityError] = useState("");
   const [selectedYear, setSelectedYear] = useState(2026);
-  const [isGraphLoading] = useState(false);
-  const [graphError] = useState("");
+  const [isGraphLoading, setIsGraphLoading] = useState(true);
+  const [graphError, setGraphError] = useState("");
+  const [graphData, setGraphData] = useState<GraphPoint[]>(defaultGraphPoints);
+
+  // Fetch total users stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      setStatsLoading(true);
+      setStatsError("");
+      try {
+        const response = await baseApi.get<ApiStatsResponse>(ENDPOINTS.totalUsers);
+        if (response.data) {
+          setStats({
+            totalUsers: response.data.total_users,
+            activeUsers: response.data.total_active_users,
+          });
+        }
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          setStatsError(err.response?.data?.message || "Failed to load stats");
+        } else {
+          setStatsError("Failed to load stats");
+        }
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Fetch graph data
+  useEffect(() => {
+    const fetchGraphData = async () => {
+      setIsGraphLoading(true);
+      setGraphError("");
+      try {
+        const response = await baseApi.get<ApiGraphDataResponse>(
+          ENDPOINTS.graphData(selectedYear)
+        );
+        if (response.data?.data) {
+          const transformedData = response.data.data.map((item) => ({
+            month: item.month_name,
+            value: item.cumulative_active_users,
+          }));
+          setGraphData(transformedData);
+        }
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          setGraphError(err.response?.data?.message || "Failed to load graph data");
+        } else {
+          setGraphError("Failed to load graph data");
+        }
+      } finally {
+        setIsGraphLoading(false);
+      }
+    };
+
+    fetchGraphData();
+  }, [selectedYear]);
 
   const linePoints = useMemo<GraphPoint[]>(() => {
-    if (selectedYear === 2026) {
-      return [
-        { month: "Jan", value: 120 },
-        { month: "Feb", value: 180 },
-        { month: "Mar", value: 210 },
-        { month: "Apr", value: 280 },
-        { month: "May", value: 310 },
-        { month: "Jun", value: 360 },
-        { month: "Jul", value: 420 },
-        { month: "Aug", value: 460 },
-        { month: "Sep", value: 520 },
-        { month: "Oct", value: 590 },
-        { month: "Nov", value: 630 },
-        { month: "Dec", value: 710 },
-      ];
-    }
-
-    return defaultGraphPoints;
-  }, [selectedYear]);
+    return graphData.length > 0 ? graphData : defaultGraphPoints;
+  }, [graphData]);
 
   const statCards = useMemo<StatCard[]>(
     () => [
       {
         title: "Total Users",
-        value: formatCount(stats.totalUsers),
-        change: "Static sample data",
+        value: statsLoading ? "Loading..." : formatCount(stats.totalUsers),
+        change: statsError ? statsError : "+12.5% from last month",
         icon: <FiUsers size={16} />,
       },
       {
         title: "Active Users",
-        value: formatCount(stats.activeUsers),
-        change: "Static sample data",
+        value: statsLoading ? "Loading..." : formatCount(stats.activeUsers),
+        change: statsError ? statsError : "+8.2% from last month",
         icon: <FiUsers size={16} />,
       },
     ],
-    [stats],
+    [stats, statsLoading, statsError],
   );
 
   const graphWidth = 560;

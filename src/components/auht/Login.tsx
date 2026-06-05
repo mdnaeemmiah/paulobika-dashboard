@@ -6,7 +6,7 @@ import { FiEye, FiEyeOff } from "react-icons/fi";
 import { FcGoogle } from "react-icons/fc";
 import { FaApple } from "react-icons/fa";
 import Link from "next/link";
-// import baseApi from "@/src/api/baseApi";
+import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { toast } from "sonner";
 import axios from "axios";
@@ -89,20 +89,20 @@ export default function Login() {
         password,
       };
 
-      // const response = await baseApi.post(ENDPOINTS.login, payload);
-      // const accessToken = response.data?.access;
-      // const refreshToken = response.data?.refresh;
-      // const user = response.data?.user;
+      const response = await baseApi.post(ENDPOINTS.login, payload);
+      const accessToken = response.data?.access;
+      const refreshToken = response.data?.refresh;
+      const user = response.data?.user;
 
-      // if (!accessToken || !refreshToken || !user) {
-      //   toast.error("Invalid login response from server.");
-      //   return;
-      // }
+      if (!accessToken || !refreshToken || !user) {
+        toast.error("Invalid login response from server.");
+        return;
+      }
 
-      // localStorage.setItem("access_token", accessToken);
-      // localStorage.setItem("refresh_token", refreshToken);
-      // localStorage.setItem("user", JSON.stringify(user));
-      // localStorage.setItem("is_admin", String(Boolean(user?.is_admin)));
+      localStorage.setItem("access_token", accessToken);
+      localStorage.setItem("refresh_token", refreshToken);
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("is_admin", String(Boolean(user?.is_admin)));
 
       if (remember) {
         localStorage.setItem("remember_email", payload.email);
@@ -112,7 +112,7 @@ export default function Login() {
 
       toast.success("Login successful");
 
-      router.push("/admin/productManagement");
+      router.push("/admin/userManagement");
     } catch (error: unknown) {
       toast.error(getApiErrorMessage(error));
     } finally {
@@ -225,16 +225,16 @@ export default function Login() {
         </div>
 
         {/* Sign up */}
-        <p className="text-center text-sm text-gray-500">
+        {/* <p className="text-center text-sm text-gray-500">
           Don&apos;t have account?{" "}
           <Link
-            href="/admin/productManagement"
+            href="/admin/userManagement"
             className="font-bold"
             style={{ color: "#ba5f23" }}
           >
             Sign up
           </Link>
-        </p>
+        </p> */}
 
       </div>
     </div>

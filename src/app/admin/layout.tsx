@@ -63,11 +63,11 @@ const resolveImageUrl = (value: unknown): string => {
 
 const navItems = [
   // { label: "Dashboard", href: "/admin/dashboard", icon: MdDashboard },
-  // {
-  //   label: "User Management",
-  //   href: "/admin/userManagement",
-  //   icon: LuUsers,
-  // },
+  {
+    label: "User Management",
+    href: "/admin/userManagement",
+    icon: LuUsers,
+  },
   {
     label: "Product Management",
     href: "/admin/productManagement",
