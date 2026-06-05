@@ -59,6 +59,52 @@ export default function EditProductPage() {
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [brokenImage, setBrokenImage] = useState(false);
 
+  const normalizeCategoryForForm = (cat: unknown): string => {
+    if (Array.isArray(cat)) {
+      // if array contains a single string that's actually a stringified array, try to parse it
+      if (cat.length === 1 && typeof cat[0] === 'string' && /^[\s]*\[/.test(cat[0])) {
+        try {
+          const parsed = JSON.parse(cat[0]);
+          if (Array.isArray(parsed)) return parsed.map((c) => String(c).trim()).filter(Boolean).join(', ');
+        } catch {
+          // fallthrough
+        }
+      }
+      return cat.map((c) => String(c).trim()).filter(Boolean).join(', ');
+    }
+    if (typeof cat === 'string') {
+      // if string looks like a JSON array, parse it
+      const s = cat.trim();
+      if (/^[\[]/.test(s)) {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) return parsed.map((c) => String(c).trim()).filter(Boolean).join(', ');
+        } catch {
+          // fallthrough
+        }
+      }
+      return s;
+    }
+    return '';
+  };
+
+  const normalizeCategoryInput = (input: unknown): string[] => {
+    if (Array.isArray(input)) return input.map((c) => String(c).trim()).filter(Boolean);
+    if (typeof input !== 'string') return [];
+    // try to parse if it's JSON
+    const s = input.trim();
+    if (/^[\[]/.test(s)) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed.map((c) => String(c).trim()).filter(Boolean);
+      } catch {
+        // fallthrough
+      }
+    }
+    // split comma-separated
+    return s.split(',').map((x) => x.trim()).filter(Boolean);
+  };
+
   useEffect(() => {
     if (!id) return;
     let mounted = true;
@@ -70,7 +116,7 @@ export default function EditProductPage() {
         setForm({
           name: data.name ?? "",
           brand: data.brand ?? "",
-          category: Array.isArray(data.category) ? data.category.join(", ") : (data.category || ""),
+          category: normalizeCategoryForForm(data.category),
           price: data.price ?? "",
           lifestage: data.lifestage ?? "",
           grain_free: Boolean(data.grain_free),
@@ -120,12 +166,12 @@ export default function EditProductPage() {
 
     try {
       // if an image file was selected, send multipart/form-data
-      if (selectedImageFile) {
+        if (selectedImageFile) {
         const fd = new FormData();
         fd.append("image", selectedImageFile);
         fd.append("name", form.name);
         fd.append("brand", form.brand);
-        fd.append("category", JSON.stringify(form.category.split(",").map((s: string) => s.trim()).filter(Boolean)));
+        fd.append("category", JSON.stringify(normalizeCategoryInput(form.category)));
         fd.append("price", form.price);
         fd.append("lifestage", form.lifestage);
         fd.append("grain_free", String(Boolean(form.grain_free)));
@@ -140,12 +186,12 @@ export default function EditProductPage() {
         fd.append("source_link", form.source_link);
 
         await baseApi.patch(`${ENDPOINTS.product}${id}/`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-      } else {
+        } else {
         const benefitsArr = (form as any).benefits?.split(",").map((s: string) => s.trim()).filter(Boolean) ?? [];
         const payload: any = {
           name: form.name,
           brand: form.brand,
-          category: form.category.split(",").map((s: string) => s.trim()).filter(Boolean),
+          category: normalizeCategoryInput(form.category),
           price: form.price,
           lifestage: form.lifestage,
           grain_free: Boolean(form.grain_free),
