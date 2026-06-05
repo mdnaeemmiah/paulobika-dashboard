@@ -25,23 +25,36 @@ type ProfileResponse = {
 };
 
 const resolveImageUrl = (value: unknown): string => {
-  if (typeof value !== "string") {
-    return "";
-  }
-
+  if (typeof value !== "string") return "";
   const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
+  if (!trimmed) return "";
   if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("//")) {
-    return trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
+    const absolute = trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
+    try {
+      const u = new URL(absolute);
+      // rewrite known IP host to canonical API host
+      if (u.hostname === '34.234.152.253') {
+        u.hostname = 'api.everidog.com';
+        return u.toString();
+      }
+    } catch {
+      // ignore
+    }
+    return absolute;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!baseUrl) {
-    return trimmed;
+  // If the path looks like a media path, force the known API domain so TLS and host match
+  if (trimmed.startsWith("/media") || trimmed.startsWith("media/")) {
+    const apiHost = process.env.NEXT_PUBLIC_API_URL || ENDPOINTS?.BASEURL || baseApi?.defaults?.baseURL || "https://api.everidog.com";
+    try {
+      return new URL(trimmed, apiHost).toString();
+    } catch {
+      return apiHost.replace(/\/$/, "") + (trimmed.startsWith("/") ? trimmed : `/${trimmed}`);
+    }
   }
+
+  const baseUrl = baseApi?.defaults?.baseURL || ENDPOINTS?.BASEURL || process.env.NEXT_PUBLIC_API_URL || "";
+  if (!baseUrl) return trimmed;
 
   try {
     return new URL(trimmed, baseUrl).toString();

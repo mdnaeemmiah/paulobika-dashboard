@@ -14,15 +14,13 @@ export const ENDPOINTS = {
 
   getUsers: "/core/admin/users/",
   grapthData: (year: string | number) => `/core/admin/users/trends/${year}/`,
-   
-  terms:'/core/settings/terms/',
-  privacy:'/core/settings/privacy/',
-  faq:'/core/settings/faq/',
 
+  terms: "/core/settings/terms/",
+  privacy: "/core/settings/privacy/",
+  faq: "/core/settings/faq/",
 
-
-
-
+  product: "/core/foods/",
+  profile: "/accounts/user/profile/",
 
   dogBreeds: "/core/dog-breeds/",
   dogFood: "/core/food-preferences/",

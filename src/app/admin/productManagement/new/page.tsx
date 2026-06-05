@@ -1,101 +1,38 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { LIFESTAGE_OPTIONS } from "@/src/app/admin/productManagement/productData";
 
-const resolveImageUrl = (value: unknown): string => {
-  if (typeof value !== "string") return "";
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("//")) {
-    const absolute = trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
-    try {
-      const u = new URL(absolute);
-      if (u.hostname === '34.234.152.253') {
-        u.hostname = 'api.everidog.com';
-        return u.toString();
-      }
-    } catch {
-      // ignore
-    }
-    return absolute;
-  }
-
-  const baseUrl = baseApi?.defaults?.baseURL || ENDPOINTS?.BASEURL || process.env.NEXT_PUBLIC_API_URL || "";
-  // If the path looks like a media path, force the known API domain so TLS and host match
-  if (trimmed.startsWith("/media") || trimmed.startsWith("media/")) {
-    const apiHost = process.env.NEXT_PUBLIC_API_URL || ENDPOINTS?.BASEURL || baseApi?.defaults?.baseURL || "https://api.everidog.com";
-    try {
-      return new URL(trimmed, apiHost).toString();
-    } catch {
-      return apiHost.replace(/\/$/, "") + (trimmed.startsWith("/") ? trimmed : `/${trimmed}`);
-    }
-  }
-
-  if (!baseUrl) return trimmed;
-
-  try {
-    return new URL(trimmed, baseUrl).toString();
-  } catch {
-    return trimmed;
-  }
-};
-
-export default function EditProductPage() {
+export default function NewProductPage() {
   const router = useRouter();
-  const params = useParams();
-  const id = params?.id as string;
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [form, setForm] = useState<any>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [brokenImage, setBrokenImage] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    brand: "",
+    category: "",
+    image: "",
+    price: "",
+    lifestage: "",
+    grain_free: false,
+    protein_percentage: "",
+    fat_percentage: "",
+    calories_per_hundred_grams: "",
+    status: "active",
+    ingredients: "",
+    benefits: "",
+    why_recommended: "",
+    source_link: "",
+  });
 
-  useEffect(() => {
-    if (!id) return;
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await baseApi.get(`${ENDPOINTS.product}${id}/`);
-        if (!mounted) return;
-        const data = res.data;
-        setForm({
-          name: data.name ?? "",
-          brand: data.brand ?? "",
-          category: Array.isArray(data.category) ? data.category.join(", ") : (data.category || ""),
-          price: data.price ?? "",
-          lifestage: data.lifestage ?? "",
-          grain_free: Boolean(data.grain_free),
-          protein_percentage: data.protein_percentage ?? "",
-          fat_percentage: data.fat_percentage ?? "",
-          calories_per_hundred_grams: data.calories_per_hundred_grams ?? "",
-          status: data.status ?? "active",
-          image: data.image ?? "",
-          ingredients: data.ingredients ?? "",
-          benefits: Array.isArray(data.benefits) ? data.benefits.join(", ") : (data.benefits || ""),
-          why_recommended: data.why_recommended ?? "",
-          source_link: data.source_link ?? "",
-        });
-        // set preview from existing image url
-        if (data.image) setImagePreview(resolveImageUrl(data.image) || null);
-      } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to load product");
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [id]);
-
-  const handleChange = (k: string, v: any) => setForm((s: any) => ({ ...s, [k]: v }));
+  const handleChange = (k: string, v: any) => setForm((s) => ({ ...s, [k]: v }));
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -110,22 +47,18 @@ export default function EditProductPage() {
     if (imagePreview?.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
     setImagePreview(null);
     setSelectedImageFile(null);
-    setForm((s:any) => ({ ...s, image: "" }));
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id) return;
     setIsSubmitting(true);
-
     try {
-      // if an image file was selected, send multipart/form-data
       if (selectedImageFile) {
         const fd = new FormData();
         fd.append("image", selectedImageFile);
         fd.append("name", form.name);
         fd.append("brand", form.brand);
-        fd.append("category", JSON.stringify(form.category.split(",").map((s: string) => s.trim()).filter(Boolean)));
+        fd.append("category", JSON.stringify(form.category.split(",").map((s) => s.trim()).filter(Boolean)));
         fd.append("price", form.price);
         fd.append("lifestage", form.lifestage);
         fd.append("grain_free", String(Boolean(form.grain_free)));
@@ -134,18 +67,18 @@ export default function EditProductPage() {
         fd.append("calories_per_hundred_grams", form.calories_per_hundred_grams);
         fd.append("status", form.status);
         fd.append("ingredients", form.ingredients);
-        const benefitsArr = (form as any).benefits?.split(",").map((s: string) => s.trim()).filter(Boolean) ?? [];
+        const benefitsArr = form.benefits.split(",").map((s) => s.trim()).filter(Boolean);
         if (benefitsArr.length > 0) fd.append("benefits", JSON.stringify(benefitsArr));
         fd.append("why_recommended", form.why_recommended);
         fd.append("source_link", form.source_link);
 
-        await baseApi.patch(`${ENDPOINTS.product}${id}/`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await baseApi.post(ENDPOINTS.product, fd, { headers: { "Content-Type": "multipart/form-data" } });
       } else {
-        const benefitsArr = (form as any).benefits?.split(",").map((s: string) => s.trim()).filter(Boolean) ?? [];
+        const benefitsArr = form.benefits.split(",").map((s) => s.trim()).filter(Boolean);
         const payload: any = {
           name: form.name,
           brand: form.brand,
-          category: form.category.split(",").map((s: string) => s.trim()).filter(Boolean),
+          category: form.category.split(",").map((s) => s.trim()).filter(Boolean),
           price: form.price,
           lifestage: form.lifestage,
           grain_free: Boolean(form.grain_free),
@@ -157,52 +90,29 @@ export default function EditProductPage() {
         };
 
         if (benefitsArr.length > 0) payload.benefits = benefitsArr;
-        if (form.image && (form.image as string).trim()) payload.image = (form.image as string).trim();
+        if (form.image && form.image.trim()) payload.image = form.image.trim();
+        // ensure benefits/why_recommended/source_link when present
         payload.why_recommended = form.why_recommended;
         payload.source_link = form.source_link;
-
-        await baseApi.patch(`${ENDPOINTS.product}${id}/`, payload);
+        await baseApi.post(ENDPOINTS.product, payload);
       }
 
-      toast.success("Product updated");
+      toast.success("Product created");
       router.push("/admin/productManagement");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update product");
+      toast.error(err?.response?.data?.message || err?.message || "Failed to create product");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // const handleDelete = async () => {
-  //   if (!id) return;
-  //   setIsDeleting(true);
-  //   try {
-  //     await baseApi.delete(`${ENDPOINTS.product}${id}/`);
-  //     toast.success("Product deleted");
-  //     router.push("/admin/productManagement");
-  //   } catch (err: any) {
-  //     toast.error(err?.response?.data?.message || "Failed to delete product");
-  //   } finally {
-  //     setIsDeleting(false);
-  //   }
-  // };
-
-  useEffect(() => {
-    return () => {
-      if (imagePreview?.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
-    };
-  }, [imagePreview]);
-
-  if (isLoading) return <div className="p-4">Loading...</div>;
-  if (!form) return <div className="p-4">Product not found.</div>;
-
   return (
     <div className="p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Edit Product</h1>
+        <h1 className="text-2xl font-semibold">Add New Product</h1>
         <button type="button" onClick={() => router.push('/admin/productManagement')} className="rounded-lg border px-3 py-1">Back</button>
       </div>
-      <form onSubmit={handleSave} className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
@@ -256,11 +166,12 @@ export default function EditProductPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {(() => {
                   try {
+                    // Resolve URL relative to current origin, then proxy if external
                     const u = imagePreview ? new URL(imagePreview, window.location.origin) : null;
                     const isExternal = u ? (u.origin !== window.location.origin) : false;
                     const resolved = u ? u.toString() : imagePreview;
-                    const src = resolved && isExternal ? `/api/image-proxy?url=${encodeURIComponent(resolved)}` : resolved || undefined;
-                    return <img src={src} alt="Preview" onError={() => setBrokenImage(true)} onLoad={() => setBrokenImage(false)} className="h-full w-full object-cover rounded-xl" />;
+                    const src = resolved && isExternal ? `/api/image-proxy?url=${encodeURIComponent(resolved)}` : resolved;
+                    return <img src={src || undefined} alt="Preview" onError={() => setBrokenImage(true)} onLoad={() => setBrokenImage(false)} className="h-full w-full object-cover rounded-xl" />;
                   } catch {
                     return <img src={imagePreview || undefined} alt="Preview" onError={() => setBrokenImage(true)} onLoad={() => setBrokenImage(false)} className="h-full w-full object-cover rounded-xl" />;
                   }
@@ -275,11 +186,7 @@ export default function EditProductPage() {
             )}
           </label>
           <input id="image" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-          {/* <div className="text-xs text-[#6f7680]">
-            <div>Raw image value: <span className="break-all">{form.image || "(empty)"}</span></div>
-            <div>Resolved URL: <span className="break-all">{imagePreview || "(none)"}</span></div>
-            {brokenImage ? <div className="text-[#ef4444]">Image failed to load (broken URL or CORS).</div> : null}
-          </div> */}
+
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[#2d323a]">Source link</label>
             <input value={form.source_link} onChange={(e) => handleChange("source_link", e.target.value)} placeholder="Source link" className="h-11 w-full rounded-xl border border-[#d8dde4] bg-white px-3 text-sm" />
@@ -287,8 +194,7 @@ export default function EditProductPage() {
 
           <div className="flex items-center justify-end gap-2">
             <button type="button" onClick={() => router.push("/admin/productManagement")} className="rounded-xl border border-[#d8dde4] bg-white px-4 py-2">Cancel</button>
-            {/* <button type="button" onClick={() => void handleDelete()} disabled={isDeleting} className="rounded-xl bg-[#dc2626] px-4 py-2 text-white">{isDeleting ? 'Deleting...' : 'Delete'}</button> */}
-            <button type="submit" disabled={isSubmitting} className="rounded-xl bg-[#b76424] px-4 py-2 text-white">{isSubmitting ? 'Saving...' : 'Save Changes'}</button>
+            <button type="submit" disabled={isSubmitting} className="rounded-xl bg-[#b76424] px-4 py-2 text-white">{isSubmitting ? 'Saving...' : 'Create Product'}</button>
           </div>
         </aside>
       </form>
