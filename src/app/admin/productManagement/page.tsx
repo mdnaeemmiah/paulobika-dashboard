@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -41,12 +42,37 @@ type Row = {
 
 const statusFromApi = (value?: string): ProductStatus => (value?.toLowerCase() === "active" ? "Active" : "Inactive");
 
+const parseCategories = (cat: unknown): string[] => {
+  if (Array.isArray(cat)) return cat.map((c) => String(c).trim()).filter(Boolean);
+  if (typeof cat === "string") {
+    // Try progressive JSON parsing in case the value is stringified multiple times
+    let value: any = cat;
+    for (let i = 0; i < 3; i++) {
+      if (typeof value !== "string") break;
+      try {
+        value = JSON.parse(value);
+      } catch (e) {
+        break;
+      }
+    }
+    if (Array.isArray(value)) return value.map((c) => String(c).trim().replace(/^['"]+|['"]+$/g, "")).filter(Boolean);
+    if (typeof value === "string") {
+      // Remove surrounding brackets/quotes and unescape backslashes
+      let cleaned = value.replace(/\\+/g, "");
+      cleaned = cleaned.replace(/^[\s\[\]\(\)]+|[\s\[\]\(\)]+$/g, "");
+      cleaned = cleaned.replace(/^['"]+|['"]+$/g, "");
+      return cleaned.split(",").map((s) => s.trim().replace(/^['"]+|['"]+$/g, "")).filter(Boolean);
+    }
+  }
+  return [];
+};
+
 const mapApiToRow = (p: ApiProduct): Row => ({
   id: String(p.id),
   foodName: p.name ?? "Untitled",
   brand: p.brand ?? "",
   price: p.price ?? "",
-  categories: p.category ?? [],
+  categories: parseCategories(p.category),
   lifestage: p.lifestage,
   grainFree: Boolean(p.grain_free),
   status: statusFromApi(p.status),
@@ -68,7 +94,8 @@ export default function ProductManagementPage() {
     try {
       const res = await baseApi.get(ENDPOINTS.product);
       const list: ApiProduct[] = Array.isArray(res.data) ? res.data : res.data?.results ?? res.data?.data ?? [];
-      setRows(list.map(mapApiToRow));
+      // show newest items first (items added at the end of API response appear on top)
+      setRows(list.map(mapApiToRow).reverse());
     } catch (err) {
       const msg = axios.isAxiosError(err) ? err.response?.data?.message || "Failed to load products" : "Failed to load products";
       setFetchError(msg);

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     const lib = parsed.protocol === 'https:' ? https : http;
 
-    return await new Promise((resolve, reject) => {
+    return await new Promise<Response>((resolve, reject) => {
       const options: any = {
         hostname: parsed.hostname,
         path: parsed.pathname + parsed.search,
