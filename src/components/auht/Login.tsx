@@ -99,6 +99,11 @@ export default function Login() {
         return;
       }
 
+      if (!user?.is_admin) {
+        toast.error("Only admin users can login here.");
+        return;
+      }
+
       localStorage.setItem("access_token", accessToken);
       localStorage.setItem("refresh_token", refreshToken);
       localStorage.setItem("user", JSON.stringify(user));

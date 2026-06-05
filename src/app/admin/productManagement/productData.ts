@@ -26,7 +26,7 @@ export const PRODUCT_PAGE_SIZE = 8;
 
 export const PRODUCT_CATEGORY_OPTIONS: ProductCategory[] = ["Dry", "Wet", "Fresh", "Prescription"]; 
 
-export const LIFESTAGE_OPTIONS: string[] = ["", "all", "puppy", "adult", "senior", "gestation"];
+export const LIFESTAGE_OPTIONS: string[] = ["",  "puppy", "adult", "senior"];
 export const PRODUCT_INGREDIENT_OPTIONS: ProductIngredient[] = [
   "Turkey",
   "Rice",

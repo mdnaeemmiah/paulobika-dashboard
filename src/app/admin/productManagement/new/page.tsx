@@ -31,8 +31,26 @@ export default function NewProductPage() {
     why_recommended: "",
     source_link: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (k: string, v: any) => setForm((s) => ({ ...s, [k]: v }));
+  const handleChange = (k: string, v: any) => {
+    setForm((s) => ({ ...s, [k]: v }));
+    setErrors((prev) => ({ ...prev, [k]: "" }));
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!form.name.trim()) newErrors.name = "Name is required";
+    if (!form.brand.trim()) newErrors.brand = "Brand is required";
+    if (!form.category.trim()) newErrors.category = "Category is required";
+    if (!form.price.trim()) newErrors.price = "Price is required";
+    if (!form.lifestage.trim()) newErrors.lifestage = "Lifestage is required";
+    if (!form.ingredients.trim()) newErrors.ingredients = "Ingredients are required";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -51,6 +69,11 @@ export default function NewProductPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (selectedImageFile) {
@@ -117,29 +140,58 @@ export default function NewProductPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-[#2d323a]">Name</label>
-              <input required value={form.name} onChange={(e) => handleChange("name", e.target.value)} placeholder="Name" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full" />
+              <input
+                value={form.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                placeholder="Name"
+                className={`h-11 rounded-xl border px-3 text-sm w-full bg-white ${errors.name ? "border-red-500" : "border-[#d8dde4]"}`}
+              />
+              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-[#2d323a]">Brand</label>
-              <input value={form.brand} onChange={(e) => handleChange("brand", e.target.value)} placeholder="Brand" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full" />
+              <input
+                value={form.brand}
+                onChange={(e) => handleChange("brand", e.target.value)}
+                placeholder="Brand"
+                className={`h-11 rounded-xl border px-3 text-sm w-full bg-white ${errors.brand ? "border-red-500" : "border-[#d8dde4]"}`}
+              />
+              {errors.brand && <p className="text-xs text-red-500 mt-1">{errors.brand}</p>}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-[#2d323a]">Categories</label>
-              <input value={form.category} onChange={(e) => handleChange("category", e.target.value)} placeholder="Categories (comma separated)" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full" />
+              <input
+                value={form.category}
+                onChange={(e) => handleChange("category", e.target.value)}
+                placeholder="Categories (comma separated)"
+                className={`h-11 rounded-xl border px-3 text-sm w-full bg-white ${errors.category ? "border-red-500" : "border-[#d8dde4]"}`}
+              />
+              {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-[#2d323a]">Price</label>
-              <input value={form.price} onChange={(e) => handleChange("price", e.target.value)} placeholder="Price" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full" />
+              <input
+                value={form.price}
+                onChange={(e) => handleChange("price", e.target.value)}
+                placeholder="Price"
+                className={`h-11 rounded-xl border px-3 text-sm w-full bg-white ${errors.price ? "border-red-500" : "border-[#d8dde4]"}`}
+              />
+              {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-[#2d323a]">Lifestage</label>
-              <select value={form.lifestage} onChange={(e) => handleChange("lifestage", e.target.value)} className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full">
+              <select
+                value={form.lifestage}
+                onChange={(e) => handleChange("lifestage", e.target.value)}
+                className={`h-11 rounded-xl border px-3 text-sm w-full bg-white ${errors.lifestage ? "border-red-500" : "border-[#d8dde4]"}`}
+              >
                 {(() => {
                   const opts = LIFESTAGE_OPTIONS.slice();
                   if (form.lifestage && !opts.includes(form.lifestage)) opts.push(form.lifestage);
                   return opts.map((o) => <option key={o} value={o}>{o === "" ? "Select" : (o.charAt(0).toUpperCase() + o.slice(1))}</option>);
                 })()}
               </select>
+              {errors.lifestage && <p className="text-xs text-red-500 mt-1">{errors.lifestage}</p>}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-[#2d323a]">Status</label>
@@ -153,7 +205,15 @@ export default function NewProductPage() {
             </div>
           </div>
 
-          <textarea value={form.ingredients} onChange={(e) => handleChange("ingredients", e.target.value)} placeholder="Ingredients" className="h-28 w-full rounded-xl border border-[#d8dde4] bg-white px-3 py-2 text-sm" />
+          <div>
+            <textarea
+              value={form.ingredients}
+              onChange={(e) => handleChange("ingredients", e.target.value)}
+              placeholder="Ingredients"
+              className={`h-28 w-full rounded-xl border px-3 py-2 text-sm bg-white ${errors.ingredients ? "border-red-500" : "border-[#d8dde4]"}`}
+            />
+            {errors.ingredients && <p className="text-xs text-red-500 mt-1">{errors.ingredients}</p>}
+          </div>
           <input value={form.benefits} onChange={(e) => handleChange("benefits", e.target.value)} placeholder="Benefits (comma separated)" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm" />
           <textarea value={form.why_recommended} onChange={(e) => handleChange("why_recommended", e.target.value)} placeholder="Why recommended" className="h-28 w-full rounded-xl border border-[#d8dde4] bg-white px-3 py-2 text-sm" />
         </div>
