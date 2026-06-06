@@ -18,6 +18,8 @@ export default function NewProductPage() {
     name: "",
     brand: "",
     category: "",
+    health_issues: "",
+    food_allergies: "",
     image: "",
     price: "",
     lifestage: "",
@@ -82,6 +84,10 @@ export default function NewProductPage() {
         fd.append("name", form.name);
         fd.append("brand", form.brand);
         fd.append("category", JSON.stringify(form.category.split(",").map((s) => s.trim()).filter(Boolean)));
+        const healthIssuesArr = form.health_issues.split(",").map((s) => s.trim()).filter(Boolean);
+        if (healthIssuesArr.length > 0) fd.append("health_issues", JSON.stringify(healthIssuesArr));
+        const foodAllergiesArr = form.food_allergies.split(",").map((s) => s.trim()).filter(Boolean);
+        if (foodAllergiesArr.length > 0) fd.append("food_allergies", JSON.stringify(foodAllergiesArr));
         fd.append("price", form.price);
         fd.append("lifestage", form.lifestage);
         fd.append("grain_free", String(Boolean(form.grain_free)));
@@ -113,6 +119,10 @@ export default function NewProductPage() {
         };
 
         if (benefitsArr.length > 0) payload.benefits = benefitsArr;
+        const healthIssuesArr = form.health_issues.split(",").map((s) => s.trim()).filter(Boolean);
+        if (healthIssuesArr.length > 0) payload.health_issues = healthIssuesArr;
+        const foodAllergiesArr = form.food_allergies.split(",").map((s) => s.trim()).filter(Boolean);
+        if (foodAllergiesArr.length > 0) payload.food_allergies = foodAllergiesArr;
         if (form.image && form.image.trim()) payload.image = form.image.trim();
         // ensure benefits/why_recommended/source_link when present
         payload.why_recommended = form.why_recommended;
@@ -169,6 +179,26 @@ export default function NewProductPage() {
               {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
             </div>
             <div>
+              <label className="mb-1 block text-sm font-medium text-[#2d323a]">Health Issues</label>
+              <input
+                value={form.health_issues}
+                onChange={(e) => handleChange("health_issues", e.target.value)}
+                placeholder="Health issues (comma separated)"
+                className={`h-11 rounded-xl border px-3 text-sm w-full bg-white ${errors.health_issues ? "border-red-500" : "border-[#d8dde4]"}`}
+              />
+              {errors.health_issues && <p className="text-xs text-red-500 mt-1">{errors.health_issues}</p>}
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#2d323a]">Food Allergies</label>
+              <input
+                value={form.food_allergies}
+                onChange={(e) => handleChange("food_allergies", e.target.value)}
+                placeholder="Food allergies (comma separated)"
+                className={`h-11 rounded-xl border px-3 text-sm w-full bg-white ${errors.food_allergies ? "border-red-500" : "border-[#d8dde4]"}`}
+              />
+              {errors.food_allergies && <p className="text-xs text-red-500 mt-1">{errors.food_allergies}</p>}
+            </div>
+            <div>
               <label className="mb-1 block text-sm font-medium text-[#2d323a]">Price</label>
               <input
                 value={form.price}
@@ -206,6 +236,7 @@ export default function NewProductPage() {
           </div>
 
           <div>
+            <label className="mb-1 block text-sm font-medium text-[#2d323a]">Ingredients</label>
             <textarea
               value={form.ingredients}
               onChange={(e) => handleChange("ingredients", e.target.value)}
@@ -214,8 +245,16 @@ export default function NewProductPage() {
             />
             {errors.ingredients && <p className="text-xs text-red-500 mt-1">{errors.ingredients}</p>}
           </div>
-          <input value={form.benefits} onChange={(e) => handleChange("benefits", e.target.value)} placeholder="Benefits (comma separated)" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm" />
-          <textarea value={form.why_recommended} onChange={(e) => handleChange("why_recommended", e.target.value)} placeholder="Why recommended" className="h-28 w-full rounded-xl border border-[#d8dde4] bg-white px-3 py-2 text-sm" />
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#2d323a]">Benefits</label>
+            <input value={form.benefits} onChange={(e) => handleChange("benefits", e.target.value)} placeholder="Benefits (comma separated)" className="h-11 w-full rounded-xl border border-[#d8dde4] bg-white px-3 text-sm" />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#2d323a]">Why Recommended</label>
+            <textarea value={form.why_recommended} onChange={(e) => handleChange("why_recommended", e.target.value)} placeholder="Why recommended" className="h-28 w-full rounded-xl border border-[#d8dde4] bg-white px-3 py-2 text-sm" />
+          </div>
         </div>
 
         <aside className="space-y-3">

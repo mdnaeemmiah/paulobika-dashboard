@@ -15,6 +15,8 @@ type ApiProduct = {
   name: string;
   brand: string;
   category: string[];
+  health_issues?: any[];
+  food_allergies?: any[];
   price: string;
   lifestage?: string;
   grain_free?: boolean;
@@ -35,6 +37,8 @@ type Row = {
   brand: string;
   price: string;
   categories: string[];
+  healthIssues: string;
+  foodAllergies: string;
   lifestage?: string;
   grainFree?: boolean;
   status: ProductStatus;
@@ -43,28 +47,34 @@ type Row = {
 const statusFromApi = (value?: string): ProductStatus => (value?.toLowerCase() === "active" ? "Active" : "Inactive");
 
 const parseCategories = (cat: unknown): string[] => {
-  if (Array.isArray(cat)) return cat.map((c) => String(c).trim()).filter(Boolean);
-  if (typeof cat === "string") {
+  const parseValue = (value: any): string[] => {
+    if (Array.isArray(value)) {
+      return value.flatMap((c) => parseValue(c)).filter(Boolean);
+    }
+    if (typeof value !== "string") return [];
+    
+    let parsed: any = value.trim();
     // Try progressive JSON parsing in case the value is stringified multiple times
-    let value: any = cat;
-    for (let i = 0; i < 3; i++) {
-      if (typeof value !== "string") break;
+    for (let i = 0; i < 5; i++) {
+      if (typeof parsed !== "string") break;
       try {
-        value = JSON.parse(value);
+        const next = JSON.parse(parsed);
+        parsed = next;
       } catch (e) {
         break;
       }
     }
-    if (Array.isArray(value)) return value.map((c) => String(c).trim().replace(/^['"]+|['"]+$/g, "")).filter(Boolean);
-    if (typeof value === "string") {
-      // Remove surrounding brackets/quotes and unescape backslashes
-      let cleaned = value.replace(/\\+/g, "");
-      cleaned = cleaned.replace(/^[\s\[\]\(\)]+|[\s\[\]\(\)]+$/g, "");
-      cleaned = cleaned.replace(/^['"]+|['"]+$/g, "");
-      return cleaned.split(",").map((s) => s.trim().replace(/^['"]+|['"]+$/g, "")).filter(Boolean);
+    
+    if (Array.isArray(parsed)) {
+      return parsed.map((c) => String(c).trim()).filter(Boolean);
     }
-  }
-  return [];
+    if (typeof parsed === "string") {
+      return [parsed.trim()].filter(Boolean);
+    }
+    return [];
+  };
+  
+  return parseValue(cat);
 };
 
 const mapApiToRow = (p: ApiProduct): Row => ({
@@ -73,6 +83,8 @@ const mapApiToRow = (p: ApiProduct): Row => ({
   brand: p.brand ?? "",
   price: p.price ?? "",
   categories: parseCategories(p.category),
+  healthIssues: parseCategories(p.health_issues).join(", "),
+  foodAllergies: parseCategories(p.food_allergies).join(", "),
   lifestage: p.lifestage,
   grainFree: Boolean(p.grain_free),
   status: statusFromApi(p.status),
@@ -113,7 +125,7 @@ export default function ProductManagementPage() {
   const filteredRows = useMemo(() => {
     const kw = searchText.trim().toLowerCase();
     return rows.filter((r) => {
-      const match = kw.length === 0 || r.foodName.toLowerCase().includes(kw) || r.brand.toLowerCase().includes(kw) || r.categories.join(" ").toLowerCase().includes(kw);
+      const match = kw.length === 0 || r.foodName.toLowerCase().includes(kw) || r.brand.toLowerCase().includes(kw) || r.categories.join(" ").toLowerCase().includes(kw) || r.healthIssues.toLowerCase().includes(kw) || r.foodAllergies.toLowerCase().includes(kw);
       if (!match) return false;
       if (categoryFilter === "all") return true;
       return r.categories.includes(categoryFilter);
@@ -175,6 +187,8 @@ export default function ProductManagementPage() {
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Brand</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Price</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Category</th>
+                  <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Health Issues</th>
+                  <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Food Allergies</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Lifestage</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Status</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Actions</th>
@@ -182,15 +196,17 @@ export default function ProductManagementPage() {
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-[#7d8592]">Loading products...</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-[#7d8592]">Loading products...</td></tr>
                 ) : paged.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-[#7d8592]">No products found.</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-[#7d8592]">No products found.</td></tr>
                 ) : paged.map((row) => (
                   <tr key={row.id} className="border-b border-[#edf1f4] last:border-b-0">
                     <td className="max-w-44 truncate px-3 py-3 text-[13px] font-medium text-[#2f343a] sm:px-4">{row.foodName}</td>
                     <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4">{row.brand}</td>
                     <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4">${row.price}</td>
                     <td className="px-3 py-3 sm:px-4"><div className="flex flex-wrap gap-1">{row.categories.map((c)=> (<span key={`${row.id}-${c}`} className="inline-flex rounded-full px-3 py-1 text-[11px] bg-[#f8fafc] text-[#5f6670] border border-[#d8dde4]">{c}</span>))}</div></td>
+                    <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4 max-w-xs truncate" title={row.healthIssues}>{row.healthIssues || "-"}</td>
+                    <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4 max-w-xs truncate" title={row.foodAllergies}>{row.foodAllergies || "-"}</td>
                     <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4">{row.lifestage ?? "-"}</td>
                     <td className="px-3 py-3 sm:px-4"><span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-medium ${row.status === 'Active' ? 'bg-[#e6f8ee] text-[#1e8b4b] border border-[#beeacc]' : 'bg-[#f1f3f6] text-[#6f7885] border border-[#dde3ea]'}`}>{row.status}</span></td>
                     <td className="px-3 py-3 sm:px-4">

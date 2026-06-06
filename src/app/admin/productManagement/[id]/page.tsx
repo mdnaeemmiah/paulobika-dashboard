@@ -117,6 +117,8 @@ export default function EditProductPage() {
           name: data.name ?? "",
           brand: data.brand ?? "",
           category: normalizeCategoryForForm(data.category),
+          health_issues: normalizeCategoryForForm(data.health_issues),
+          food_allergies: normalizeCategoryForForm(data.food_allergies),
           price: data.price ?? "",
           lifestage: data.lifestage ?? "",
           grain_free: Boolean(data.grain_free),
@@ -172,6 +174,10 @@ export default function EditProductPage() {
         fd.append("name", form.name);
         fd.append("brand", form.brand);
         fd.append("category", JSON.stringify(normalizeCategoryInput(form.category)));
+        const healthIssuesArr = normalizeCategoryInput(form.health_issues);
+        if (healthIssuesArr.length > 0) fd.append("health_issues", JSON.stringify(healthIssuesArr));
+        const foodAllergiesArr = normalizeCategoryInput(form.food_allergies);
+        if (foodAllergiesArr.length > 0) fd.append("food_allergies", JSON.stringify(foodAllergiesArr));
         fd.append("price", form.price);
         fd.append("lifestage", form.lifestage);
         fd.append("grain_free", String(Boolean(form.grain_free)));
@@ -192,6 +198,8 @@ export default function EditProductPage() {
           name: form.name,
           brand: form.brand,
           category: normalizeCategoryInput(form.category),
+          health_issues: normalizeCategoryInput(form.health_issues),
+          food_allergies: normalizeCategoryInput(form.food_allergies),
           price: form.price,
           lifestage: form.lifestage,
           grain_free: Boolean(form.grain_free),
@@ -264,6 +272,14 @@ export default function EditProductPage() {
               <input value={form.category} onChange={(e) => handleChange("category", e.target.value)} placeholder="Categories (comma separated)" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full" />
             </div>
             <div>
+              <label className="mb-1 block text-sm font-medium text-[#2d323a]">Health Issues</label>
+              <input value={form.health_issues} onChange={(e) => handleChange("health_issues", e.target.value)} placeholder="Health issues (comma separated)" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#2d323a]">Food Allergies</label>
+              <input value={form.food_allergies} onChange={(e) => handleChange("food_allergies", e.target.value)} placeholder="Food allergies (comma separated)" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full" />
+            </div>
+            <div>
               <label className="mb-1 block text-sm font-medium text-[#2d323a]">Price</label>
               <input value={form.price} onChange={(e) => handleChange("price", e.target.value)} placeholder="Price" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full" />
             </div>
@@ -289,9 +305,20 @@ export default function EditProductPage() {
             </div>
           </div>
 
-          <textarea value={form.ingredients} onChange={(e) => handleChange("ingredients", e.target.value)} placeholder="Ingredients" className="h-28 w-full rounded-xl border border-[#d8dde4] bg-white px-3 py-2 text-sm" />
-          <input value={form.benefits} onChange={(e) => handleChange("benefits", e.target.value)} placeholder="Benefits (comma separated)" className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm" />
-          <textarea value={form.why_recommended} onChange={(e) => handleChange("why_recommended", e.target.value)} placeholder="Why recommended" className="h-28 w-full rounded-xl border border-[#d8dde4] bg-white px-3 py-2 text-sm" />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#2d323a]">Ingredients</label>
+            <textarea value={form.ingredients} onChange={(e) => handleChange("ingredients", e.target.value)} placeholder="Ingredients" className="h-28 w-full rounded-xl border border-[#d8dde4] bg-white px-3 py-2 text-sm" />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#2d323a]">Benefits</label>
+            <input value={form.benefits} onChange={(e) => handleChange("benefits", e.target.value)} placeholder="Benefits (comma separated)" className="h-11 w-full rounded-xl border border-[#d8dde4] bg-white px-3 text-sm" />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#2d323a]">Why Recommended</label>
+            <textarea value={form.why_recommended} onChange={(e) => handleChange("why_recommended", e.target.value)} placeholder="Why recommended" className="h-28 w-full rounded-xl border border-[#d8dde4] bg-white px-3 py-2 text-sm" />
+          </div>
         </div>
 
         <aside className="space-y-3">
