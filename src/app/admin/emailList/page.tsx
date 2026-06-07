@@ -126,74 +126,67 @@ export default function EmailListPage() {
         </div>
 
         <div className="space-y-4 p-4 sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <label className="flex h-11 w-full items-center gap-2 rounded-xl border border-[#d8dde4] bg-[#eceef2] px-3 lg:max-w-135">
-              <FiSearch className="text-[#8d95a0]" size={16} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => handleSearch(event.target.value)}
-                placeholder="Search users..."
-                className="w-full bg-transparent text-[14px] text-[#3a4048] outline-none placeholder:text-[#9aa1ab]"
-              />
-            </label>
+<div className="flex items-center gap-3">
+  <label className="flex h-11 flex-1 items-center gap-2 rounded-xl border border-[#d8dde4] bg-[#eceef2] px-3">
+    <FiSearch className="text-[#8d95a0]" size={16} />
+    <input
+      type="text"
+      value={searchTerm}
+      onChange={(event) => handleSearch(event.target.value)}
+      placeholder="Search users..."
+      className="w-full bg-transparent text-[14px] text-[#3a4048] outline-none placeholder:text-[#9aa1ab]"
+    />
+  </label>
 
-            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:w-auto lg:items-center">
-              <button
-                type="button"
-                onClick={() => setShowExportModal(true)}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#d8dde4] bg-[#f7f7f8] px-4 text-[13px] font-medium text-[#2d323a] sm:text-[14px] lg:min-w-28"
-              >
-                <FiDownload size={14} />
-                Export CSV
-              </button>
-
-              <Link
-                href="/admin/emailList/sendPromo"
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#b76424] px-4 text-[13px] font-medium text-white sm:text-[14px] lg:min-w-34"
-              >
-                <LuSend size={15} />
-                Send Promo
-              </Link>
-            </div>
-          </div>
+  <button
+    type="button"
+    onClick={() => setShowExportModal(true)}
+    className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#d8dde4] bg-[#f7f7f8] px-4 text-[14px] font-medium text-[#2d323a]"
+  >
+    <FiDownload size={14} />
+    Export CSV
+  </button>
+</div>
 
           <div className="overflow-hidden rounded-2xl border border-[#d8dde4] bg-[#f7f7f8]">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-125 border-collapse text-left sm:min-w-160">
-                <thead>
-                  <tr className="border-b border-[#e1e6ed] text-[13px] text-[#6f7784]">
-                    <th className="px-4 py-3 font-medium lg:text-[20px]">User Name</th>
-                    <th className="px-4 py-3 font-medium lg:text-[20px]">Email</th>
-                    <th className="px-4 py-3 font-medium lg:text-[20px]">Subscription Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedRecords.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="px-4 py-8 text-center text-[14px] text-[#7f8793]">
-                        No records found.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedRecords.map((record) => (
-                      <tr key={record.id} className="border-b border-[#e7ebf0] text-[14px] text-[#3a4048]">
-                        <td className="px-4 py-3">{record.name}</td>
-                        <td className="px-4 py-3 text-[#6b7280]">{record.email}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex min-w-24 items-center justify-center rounded-full px-3 py-1 text-[12px] font-medium ${getStatusStyle(
-                              record.subscribed,
-                            )}`}
-                          >
-                            {record.subscribed ? "Subscribed" : "Unsubscribed"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+<table className="w-full border-collapse text-left">
+  <thead>
+    <tr className="border-b border-[#e1e6ed] text-[13px] text-[#6f7784]">
+      <th className="px-4 py-3 font-medium lg:text-[20px]">
+        User Name
+      </th>
+      <th className="px-4 py-3 font-medium lg:text-[20px]">
+        Email
+      </th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {paginatedRecords.length === 0 ? (
+      <tr>
+        <td
+          colSpan={2}
+          className="px-4 py-8 text-center text-[14px] text-[#7f8793]"
+        >
+          No records found.
+        </td>
+      </tr>
+    ) : (
+      paginatedRecords.map((record) => (
+        <tr
+          key={record.id}
+          className="border-b border-[#e7ebf0] text-[14px] text-[#3a4048]"
+        >
+          <td className="px-4 py-3">{record.name}</td>
+          <td className="px-4 py-3 text-[#6b7280]">
+            {record.email}
+          </td>
+        </tr>
+      ))
+    )}
+  </tbody>
+</table>
             </div>
 
             <div className="flex flex-col gap-3 border-t border-[#e1e6ed] px-4 py-3 text-[13px] text-[#6f7784] sm:flex-row sm:items-center sm:justify-between">
