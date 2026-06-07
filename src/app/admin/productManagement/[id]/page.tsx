@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @next/next/no-img-element */
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -13,8 +13,13 @@ const resolveImageUrl = (value: unknown): string => {
   if (typeof value !== "string") return "";
   const trimmed = value.trim();
   if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("//")) {
-    const absolute = trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
+
+  const urlMatch = trimmed.match(/https?:\/\/[^\s"')\]]+/i);
+  const candidate = urlMatch?.[0] ?? trimmed.replace(/^["'\[]+/, "").replace(/["'\]\)]+$/, "");
+
+  if (!candidate) return "";
+  if (/^https?:\/\//i.test(candidate) || candidate.startsWith("//")) {
+    const absolute = candidate.startsWith("//") ? `https:${candidate}` : candidate;
     try {
       const u = new URL(absolute);
       if (u.hostname === '34.234.152.253') {
@@ -29,21 +34,21 @@ const resolveImageUrl = (value: unknown): string => {
 
   const baseUrl = baseApi?.defaults?.baseURL || ENDPOINTS?.BASEURL || process.env.NEXT_PUBLIC_API_URL || "";
   // If the path looks like a media path, force the known API domain so TLS and host match
-  if (trimmed.startsWith("/media") || trimmed.startsWith("media/")) {
+  if (candidate.startsWith("/media") || candidate.startsWith("media/")) {
     const apiHost = process.env.NEXT_PUBLIC_API_URL || ENDPOINTS?.BASEURL || baseApi?.defaults?.baseURL || "https://api.everidog.com";
     try {
-      return new URL(trimmed, apiHost).toString();
+      return new URL(candidate, apiHost).toString();
     } catch {
-      return apiHost.replace(/\/$/, "") + (trimmed.startsWith("/") ? trimmed : `/${trimmed}`);
+      return apiHost.replace(/\/$/, "") + (candidate.startsWith("/") ? candidate : `/${candidate}`);
     }
   }
 
   if (!baseUrl) return trimmed;
 
   try {
-    return new URL(trimmed, baseUrl).toString();
+    return new URL(candidate, baseUrl).toString();
   } catch {
-    return trimmed;
+    return candidate;
   }
 };
 
@@ -53,11 +58,9 @@ export default function EditProductPage() {
   const id = params?.id as string;
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [form, setForm] = useState<any>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
-  const [brokenImage, setBrokenImage] = useState(false);
 
   const normalizeCategoryForForm = (cat: unknown): string => {
     if (Array.isArray(cat)) {
@@ -88,23 +91,6 @@ export default function EditProductPage() {
     return '';
   };
 
-  const normalizeCategoryInput = (input: unknown): string[] => {
-    if (Array.isArray(input)) return input.map((c) => String(c).trim()).filter(Boolean);
-    if (typeof input !== 'string') return [];
-    // try to parse if it's JSON
-    const s = input.trim();
-    if (/^[\[]/.test(s)) {
-      try {
-        const parsed = JSON.parse(s);
-        if (Array.isArray(parsed)) return parsed.map((c) => String(c).trim()).filter(Boolean);
-      } catch {
-        // fallthrough
-      }
-    }
-    // split comma-separated
-    return s.split(',').map((x) => x.trim()).filter(Boolean);
-  };
-
   useEffect(() => {
     if (!id) return;
     let mounted = true;
@@ -119,6 +105,7 @@ export default function EditProductPage() {
           category: normalizeCategoryForForm(data.category),
           health_issues: normalizeCategoryForForm(data.health_issues),
           food_allergies: normalizeCategoryForForm(data.food_allergies),
+          good_for: data.good_for ?? "",
           price: data.price ?? "",
           lifestage: data.lifestage ?? "",
           grain_free: Boolean(data.grain_free),
@@ -145,9 +132,53 @@ export default function EditProductPage() {
 
   const handleChange = (k: string, v: any) => setForm((s: any) => ({ ...s, [k]: v }));
 
+  const toCommaSeparatedText = (value: unknown) => {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item).trim()).filter(Boolean).join(", ");
+    }
+
+    if (typeof value === "string") {
+      return value.trim();
+    }
+
+    return "";
+  };
+
+  const buildEditPayload = () => {
+    const payload = new FormData();
+
+    payload.append("name", String(form?.name ?? ""));
+    payload.append("brand", String(form?.brand ?? ""));
+    payload.append("category", toCommaSeparatedText(form?.category));
+    payload.append("health_issues", toCommaSeparatedText(form?.health_issues));
+    payload.append("food_allergies", toCommaSeparatedText(form?.food_allergies));
+    payload.append("good_for", String(form?.good_for ?? ""));
+    payload.append("price", String(form?.price ?? ""));
+    payload.append("lifestage", String(form?.lifestage ?? ""));
+    payload.append("grain_free", String(Boolean(form?.grain_free)));
+    payload.append("protein_percentage", String(form?.protein_percentage ?? ""));
+    payload.append("fat_percentage", String(form?.fat_percentage ?? ""));
+    payload.append("calories_per_hundred_grams", String(form?.calories_per_hundred_grams ?? ""));
+    payload.append("status", String(form?.status ?? "active"));
+    payload.append("ingredients", String(form?.ingredients ?? ""));
+    payload.append("benefits", toCommaSeparatedText(form?.benefits));
+    payload.append("why_recommended", String(form?.why_recommended ?? ""));
+    payload.append("source_link", String(form?.source_link ?? ""));
+
+    if (selectedImageFile) {
+      payload.append("image", selectedImageFile);
+    }
+
+    return payload;
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
+    }
     if (imagePreview?.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
     const url = URL.createObjectURL(file);
     setImagePreview(url);
@@ -167,56 +198,11 @@ export default function EditProductPage() {
     setIsSubmitting(true);
 
     try {
-      // if an image file was selected, send multipart/form-data
-        if (selectedImageFile) {
-        const fd = new FormData();
-        fd.append("image", selectedImageFile);
-        fd.append("name", form.name);
-        fd.append("brand", form.brand);
-        fd.append("category", JSON.stringify(normalizeCategoryInput(form.category)));
-        const healthIssuesArr = normalizeCategoryInput(form.health_issues);
-        if (healthIssuesArr.length > 0) fd.append("health_issues", JSON.stringify(healthIssuesArr));
-        const foodAllergiesArr = normalizeCategoryInput(form.food_allergies);
-        if (foodAllergiesArr.length > 0) fd.append("food_allergies", JSON.stringify(foodAllergiesArr));
-        fd.append("price", form.price);
-        fd.append("lifestage", form.lifestage);
-        fd.append("grain_free", String(Boolean(form.grain_free)));
-        fd.append("protein_percentage", form.protein_percentage);
-        fd.append("fat_percentage", form.fat_percentage);
-        fd.append("calories_per_hundred_grams", form.calories_per_hundred_grams);
-        fd.append("status", form.status);
-        fd.append("ingredients", form.ingredients);
-        const benefitsArr = (form as any).benefits?.split(",").map((s: string) => s.trim()).filter(Boolean) ?? [];
-        if (benefitsArr.length > 0) fd.append("benefits", JSON.stringify(benefitsArr));
-        fd.append("why_recommended", form.why_recommended);
-        fd.append("source_link", form.source_link);
+      const payload = buildEditPayload();
 
-        await baseApi.patch(`${ENDPOINTS.product}${id}/`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-        } else {
-        const benefitsArr = (form as any).benefits?.split(",").map((s: string) => s.trim()).filter(Boolean) ?? [];
-        const payload: any = {
-          name: form.name,
-          brand: form.brand,
-          category: normalizeCategoryInput(form.category),
-          health_issues: normalizeCategoryInput(form.health_issues),
-          food_allergies: normalizeCategoryInput(form.food_allergies),
-          price: form.price,
-          lifestage: form.lifestage,
-          grain_free: Boolean(form.grain_free),
-          protein_percentage: form.protein_percentage,
-          fat_percentage: form.fat_percentage,
-          calories_per_hundred_grams: form.calories_per_hundred_grams,
-          status: form.status,
-          ingredients: form.ingredients,
-        };
-
-        if (benefitsArr.length > 0) payload.benefits = benefitsArr;
-        if (form.image && (form.image as string).trim()) payload.image = (form.image as string).trim();
-        payload.why_recommended = form.why_recommended;
-        payload.source_link = form.source_link;
-
-        await baseApi.patch(`${ENDPOINTS.product}${id}/`, payload);
-      }
+      await baseApi.patch(`${ENDPOINTS.product}${id}/`, payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       toast.success("Product updated");
       router.push("/admin/productManagement");
@@ -303,11 +289,59 @@ export default function EditProductPage() {
             <div className="flex items-center">
               <label className="flex items-center gap-2"><input type="checkbox" checked={form.grain_free} onChange={(e) => handleChange("grain_free", e.target.checked)} /> <span className="ml-1">Grain free</span></label>
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#2d323a]">Protein %</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={form.protein_percentage}
+                onChange={(e) => handleChange("protein_percentage", e.target.value)}
+                placeholder="e.g. 20.00"
+                className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#2d323a]">Fat %</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={form.fat_percentage}
+                onChange={(e) => handleChange("fat_percentage", e.target.value)}
+                placeholder="e.g. 4.00"
+                className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#2d323a]">Calories / 100g</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.calories_per_hundred_grams}
+                onChange={(e) => handleChange("calories_per_hundred_grams", e.target.value)}
+                placeholder="e.g. 200.00"
+                className="h-11 rounded-xl border border-[#d8dde4] bg-white px-3 text-sm w-full"
+              />
+            </div>
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-[#2d323a]">Ingredients</label>
             <textarea value={form.ingredients} onChange={(e) => handleChange("ingredients", e.target.value)} placeholder="Ingredients" className="h-28 w-full rounded-xl border border-[#d8dde4] bg-white px-3 py-2 text-sm" />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#2d323a]">Good For</label>
+            <input
+              value={form.good_for || ""}
+              onChange={(e) => handleChange("good_for", e.target.value)}
+              placeholder="Good for"
+              className="h-11 w-full rounded-xl border border-[#d8dde4] bg-white px-3 text-sm"
+            />
           </div>
 
           <div>
@@ -326,16 +360,15 @@ export default function EditProductPage() {
           <label htmlFor="image" className="flex h-44 w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#d8dde4] bg-[#f8f9fb] text-[#8f97a3]">
             {imagePreview ? (
               <div className="relative h-full w-full">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {(() => {
                   try {
                     const u = imagePreview ? new URL(imagePreview, window.location.origin) : null;
                     const isExternal = u ? (u.origin !== window.location.origin) : false;
                     const resolved = u ? u.toString() : imagePreview;
                     const src = resolved && isExternal ? `/api/image-proxy?url=${encodeURIComponent(resolved)}` : resolved || undefined;
-                    return <img src={src} alt="Preview" onError={() => setBrokenImage(true)} onLoad={() => setBrokenImage(false)} className="h-full w-full object-cover rounded-xl" />;
+                    return <img src={src} alt="Preview" className="h-full w-full object-cover rounded-xl" />;
                   } catch {
-                    return <img src={imagePreview || undefined} alt="Preview" onError={() => setBrokenImage(true)} onLoad={() => setBrokenImage(false)} className="h-full w-full object-cover rounded-xl" />;
+                    return <img src={imagePreview || undefined} alt="Preview" className="h-full w-full object-cover rounded-xl" />;
                   }
                 })()}
                 <button type="button" onClick={(e) => { e.preventDefault(); clearImage(); }} className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-white">Remove</button>
@@ -348,11 +381,6 @@ export default function EditProductPage() {
             )}
           </label>
           <input id="image" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-          {/* <div className="text-xs text-[#6f7680]">
-            <div>Raw image value: <span className="break-all">{form.image || "(empty)"}</span></div>
-            <div>Resolved URL: <span className="break-all">{imagePreview || "(none)"}</span></div>
-            {brokenImage ? <div className="text-[#ef4444]">Image failed to load (broken URL or CORS).</div> : null}
-          </div> */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[#2d323a]">Source link</label>
             <input value={form.source_link} onChange={(e) => handleChange("source_link", e.target.value)} placeholder="Source link" className="h-11 w-full rounded-xl border border-[#d8dde4] bg-white px-3 text-sm" />
@@ -360,7 +388,6 @@ export default function EditProductPage() {
 
           <div className="flex items-center justify-end gap-2">
             <button type="button" onClick={() => router.push("/admin/productManagement")} className="rounded-xl border border-[#d8dde4] bg-white px-4 py-2">Cancel</button>
-            {/* <button type="button" onClick={() => void handleDelete()} disabled={isDeleting} className="rounded-xl bg-[#dc2626] px-4 py-2 text-white">{isDeleting ? 'Deleting...' : 'Delete'}</button> */}
             <button type="submit" disabled={isSubmitting} className="rounded-xl bg-[#b76424] px-4 py-2 text-white">{isSubmitting ? 'Saving...' : 'Save Changes'}</button>
           </div>
         </aside>

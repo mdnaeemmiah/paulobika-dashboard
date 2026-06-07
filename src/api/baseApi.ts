@@ -5,9 +5,26 @@ const baseApi = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
 });
 
+const PUBLIC_AUTH_PATHS = [
+  "/accounts/user/login/",
+  "/accounts/user/register/",
+  "/accounts/user/verify-otp/",
+  "/accounts/user/resend-otp/",
+  "/accounts/user/send-reset-password-email/",
+  "/accounts/user/reset-password-otp/",
+  "/accounts/user/set-new-password/",
+];
+
+const isPublicAuthPath = (url?: string) =>
+  Boolean(url && PUBLIC_AUTH_PATHS.some((path) => url.includes(path)));
+
 // Add token to all requests
 baseApi.interceptors.request.use(
   (config) => {
+    if (isPublicAuthPath(config.url)) {
+      return config;
+    }
+
     const token = localStorage.getItem("access_token");
     if (token) {
       config.headers = config.headers || {};
@@ -25,6 +42,10 @@ baseApi.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    if (isPublicAuthPath(originalRequest?.url)) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @next/next/no-img-element */
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -8,12 +8,13 @@ import { toast } from "sonner";
 import axios from "axios";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
-import { PRODUCT_PAGE_SIZE, PRODUCT_TABLE_ROWS, type ProductStatus } from "./productData";
+import { PRODUCT_PAGE_SIZE, type ProductStatus } from "./productData";
 
 type ApiProduct = {
   id: number | string;
   name: string;
   brand: string;
+  good_for?: string;
   category: string[];
   health_issues?: any[];
   food_allergies?: any[];
@@ -35,16 +36,61 @@ type Row = {
   id: string;
   foodName: string;
   brand: string;
+  goodFor: string;
+  image?: string;
   price: string;
   categories: string[];
-  healthIssues: string;
-  foodAllergies: string;
+  // healthIssues: string;
+  // foodAllergies: string;
   lifestage?: string;
   grainFree?: boolean;
   status: ProductStatus;
 };
 
 const statusFromApi = (value?: string): ProductStatus => (value?.toLowerCase() === "active" ? "Active" : "Inactive");
+
+const resolveImageUrl = (value: unknown): string => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const urlMatch = trimmed.match(/https?:\/\/[^\s"')\]]+/i);
+  const candidate = urlMatch?.[0] ?? trimmed.replace(/^["'\[]+/, "").replace(/["'\]\)]+$/, "");
+
+  if (!candidate) return "";
+
+  if (/^https?:\/\//i.test(candidate) || candidate.startsWith("//")) {
+    const absolute = candidate.startsWith("//") ? `https:${candidate}` : candidate;
+    try {
+      const u = new URL(absolute);
+      if (u.hostname === "34.234.152.253") {
+        u.hostname = "api.everidog.com";
+        return u.toString();
+      }
+    } catch {
+      // ignore
+    }
+    return absolute;
+  }
+
+  const baseUrl = ENDPOINTS?.BASEURL || process.env.NEXT_PUBLIC_API_URL || baseApi?.defaults?.baseURL || "";
+  if (candidate.startsWith("/media") || candidate.startsWith("media/")) {
+    const apiHost = process.env.NEXT_PUBLIC_API_URL || ENDPOINTS?.BASEURL || baseApi?.defaults?.baseURL || "https://api.everidog.com";
+    try {
+      return new URL(candidate, apiHost).toString();
+    } catch {
+      return apiHost.replace(/\/$/, "") + (candidate.startsWith("/") ? candidate : `/${candidate}`);
+    }
+  }
+
+  if (!baseUrl) return candidate;
+
+  try {
+    return new URL(candidate, baseUrl).toString();
+  } catch {
+    return candidate;
+  }
+};
 
 const parseCategories = (cat: unknown): string[] => {
   const parseValue = (value: any): string[] => {
@@ -60,7 +106,7 @@ const parseCategories = (cat: unknown): string[] => {
       try {
         const next = JSON.parse(parsed);
         parsed = next;
-      } catch (e) {
+      } catch {
         break;
       }
     }
@@ -81,10 +127,12 @@ const mapApiToRow = (p: ApiProduct): Row => ({
   id: String(p.id),
   foodName: p.name ?? "Untitled",
   brand: p.brand ?? "",
+  goodFor: p.good_for ?? "",
+  image: resolveImageUrl(p.image),
   price: p.price ?? "",
   categories: parseCategories(p.category),
-  healthIssues: parseCategories(p.health_issues).join(", "),
-  foodAllergies: parseCategories(p.food_allergies).join(", "),
+  // healthIssues: parseCategories(p.health_issues).join(", "),
+  // foodAllergies: parseCategories(p.food_allergies).join(", "),
   lifestage: p.lifestage,
   grainFree: Boolean(p.grain_free),
   status: statusFromApi(p.status),
@@ -125,7 +173,7 @@ export default function ProductManagementPage() {
   const filteredRows = useMemo(() => {
     const kw = searchText.trim().toLowerCase();
     return rows.filter((r) => {
-      const match = kw.length === 0 || r.foodName.toLowerCase().includes(kw) || r.brand.toLowerCase().includes(kw) || r.categories.join(" ").toLowerCase().includes(kw) || r.healthIssues.toLowerCase().includes(kw) || r.foodAllergies.toLowerCase().includes(kw);
+      const match = kw.length === 0 || r.foodName.toLowerCase().includes(kw) || r.brand.toLowerCase().includes(kw) || r.goodFor.toLowerCase().includes(kw) || r.categories.join(" ").toLowerCase().includes(kw);
       if (!match) return false;
       if (categoryFilter === "all") return true;
       return r.categories.includes(categoryFilter);
@@ -185,10 +233,12 @@ export default function ProductManagementPage() {
                 <tr className="border-b border-[#e0e5ea] text-left">
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Food Name</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Brand</th>
+                  <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Good For</th>
+                  <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Image</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Price</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Category</th>
-                  <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Health Issues</th>
-                  <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Food Allergies</th>
+                  {/* <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Health Issues</th>
+                  <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Food Allergies</th> */}
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Lifestage</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Status</th>
                   <th className="px-3 py-3 text-sm font-medium text-[#232a33] sm:px-4">Actions</th>
@@ -196,17 +246,25 @@ export default function ProductManagementPage() {
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-[#7d8592]">Loading products...</td></tr>
+                  <tr><td colSpan={11} className="px-4 py-8 text-center text-sm text-[#7d8592]">Loading products...</td></tr>
                 ) : paged.length === 0 ? (
-                  <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-[#7d8592]">No products found.</td></tr>
+                  <tr><td colSpan={11} className="px-4 py-8 text-center text-sm text-[#7d8592]">No products found.</td></tr>
                 ) : paged.map((row) => (
                   <tr key={row.id} className="border-b border-[#edf1f4] last:border-b-0">
                     <td className="max-w-44 truncate px-3 py-3 text-[13px] font-medium text-[#2f343a] sm:px-4">{row.foodName}</td>
                     <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4">{row.brand}</td>
+                    <td className="max-w-44 truncate px-3 py-3 text-[13px] text-[#6f7680] sm:px-4" title={row.goodFor}>{row.goodFor || "-"}</td>
+                    <td className="px-3 py-3 sm:px-4">
+                      {row.image ? (
+                        <img src={row.image} alt={row.foodName} className="h-12 w-12 rounded-lg border border-[#d8dde4] object-cover" />
+                      ) : (
+                        <span className="text-[13px] text-[#9aa3ad]">-</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4">${row.price}</td>
                     <td className="px-3 py-3 sm:px-4"><div className="flex flex-wrap gap-1">{row.categories.map((c)=> (<span key={`${row.id}-${c}`} className="inline-flex rounded-full px-3 py-1 text-[11px] bg-[#f8fafc] text-[#5f6670] border border-[#d8dde4]">{c}</span>))}</div></td>
-                    <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4 max-w-xs truncate" title={row.healthIssues}>{row.healthIssues || "-"}</td>
-                    <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4 max-w-xs truncate" title={row.foodAllergies}>{row.foodAllergies || "-"}</td>
+                    {/* <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4 max-w-xs truncate" title={row.healthIssues}>{row.healthIssues || "-"}</td>
+                    <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4 max-w-xs truncate" title={row.foodAllergies}>{row.foodAllergies || "-"}</td> */}
                     <td className="px-3 py-3 text-[13px] text-[#6f7680] sm:px-4">{row.lifestage ?? "-"}</td>
                     <td className="px-3 py-3 sm:px-4"><span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-medium ${row.status === 'Active' ? 'bg-[#e6f8ee] text-[#1e8b4b] border border-[#beeacc]' : 'bg-[#f1f3f6] text-[#6f7885] border border-[#dde3ea]'}`}>{row.status}</span></td>
                     <td className="px-3 py-3 sm:px-4">

@@ -315,12 +315,12 @@ export default function SettingsPage() {
                 <div className="flex flex-col gap-2 border-b border-[#e2e6ec] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-[#2f343a]">{activeTab.label} Sections</h3>
-                    <p className="text-sm text-[#7d8592]">Endpoint: {activeTab.endpoint}</p>
+                    {/* <p className="text-sm text-[#7d8592]">Endpoint: {activeTab.endpoint}</p> */}
                   </div>
-                  <span className="inline-flex w-fit items-center gap-2 rounded-full bg-[#edf7f1] px-3 py-1 text-xs font-semibold text-[#2f8f5b]">
+                  {/* <span className="inline-flex w-fit items-center gap-2 rounded-full bg-[#edf7f1] px-3 py-1 text-xs font-semibold text-[#2f8f5b]">
                     <FiCheckCircle />
                     GET enabled
-                  </span>
+                  </span> */}
                 </div>
 
                 {error ? (
@@ -389,12 +389,12 @@ export default function SettingsPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="rounded-xl border border-[#d8dde4] bg-white">
-                <div className="border-b border-[#e2e6ec] px-4 py-3">
+                {/* <div className="border-b border-[#e2e6ec] px-4 py-3">
                   <h3 className="text-lg font-semibold text-[#2f343a]">
                     {editingItem ? `Edit ${activeTab.label}` : `Add ${activeTab.label}`}
                   </h3>
                   <p className="text-sm text-[#7d8592]">POST for new sections, PATCH for updates.</p>
-                </div>
+                </div> */}
 
                 <div className="space-y-4 p-4">
                   <label className="block">

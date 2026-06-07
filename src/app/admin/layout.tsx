@@ -79,7 +79,7 @@ const navItems = [
   //   icon: MdOutlinePets,
   // },
   // { label: "Product Deals", href: "/admin/productDeals", icon: LuTag },
-  // { label: "Email List", href: "/admin/emailList", icon: MdOutlineEmail },
+  { label: "Email List", href: "/admin/emailList", icon: MdOutlineEmail },
   { label: "Settings", href: "/admin/settings", icon: MdOutlineSettings },
 ];
 
