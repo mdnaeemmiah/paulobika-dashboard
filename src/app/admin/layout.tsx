@@ -257,16 +257,7 @@ export default function DashboardLayout({
             </div>
 
             {/* Search */}
-            {/* <div className="flex h-10 w-full items-center gap-2 rounded-lg border border-[#e7ebf0] bg-[#f7f8fa] px-3 md:mx-auto md:max-w-105">
-              <FiSearch className="text-[#9aa3af] text-[14px]" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search..."
-                className="w-full bg-transparent text-[13px] text-[#4b5563] placeholder:text-[#9ca3af] outline-none"
-              />
-            </div> */}
+
 
             {/* Icons */}
             <div className="flex items-center justify-end gap-2 sm:gap-3">
@@ -274,6 +265,14 @@ export default function DashboardLayout({
                 <FiBell className="text-[18px]" />
                 <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#C57E50]" />
               </button> */}
+              <a
+                href="https://everidog.com/home"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-[#C57E50] bg-[#C57E50] px-4 text-[16px] font-medium text-white transition hover:bg-[#8F4A1D]"
+              >
+                Go to Site
+              </a>
               <button
                 type="button"
                 onClick={() => router.push("/admin/profile")}
