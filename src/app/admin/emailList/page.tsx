@@ -1,74 +1,63 @@
 "use client";
 
-import Link from "next/link";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { FiDownload, FiSearch } from "react-icons/fi";
-import { LuSend } from "react-icons/lu";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
+import axios from "axios";
 
-type EmailRecord = {
+type ApiUser = {
   id: number;
   name: string;
   email: string;
-  subscribed: boolean;
 };
-
-const EMAIL_RECORDS: EmailRecord[] = [
-  { id: 1, name: "Sarah Johnson", email: "sarah@example.com", subscribed: true },
-  { id: 2, name: "Mike Chen", email: "mike@example.com", subscribed: true },
-  { id: 3, name: "Emma Wilson", email: "emma@example.com", subscribed: false },
-  { id: 4, name: "James Brown", email: "james@example.com", subscribed: true },
-  { id: 5, name: "Lisa Park", email: "lisa@example.com", subscribed: true },
-  { id: 6, name: "David Kim", email: "david@example.com", subscribed: true },
-  { id: 7, name: "Anna Smith", email: "anna@example.com", subscribed: false },
-  { id: 8, name: "Tom Harris", email: "tom@example.com", subscribed: true },
-  { id: 9, name: "Jessica Lee", email: "jessica@example.com", subscribed: true },
-  { id: 10, name: "Robert Taylor", email: "robert@example.com", subscribed: true },
-  { id: 11, name: "Sofia Martinez", email: "sofia@example.com", subscribed: false },
-  { id: 12, name: "Noah Davis", email: "noah@example.com", subscribed: true },
-  { id: 13, name: "Ava Thompson", email: "ava@example.com", subscribed: true },
-  { id: 14, name: "Liam Walker", email: "liam@example.com", subscribed: false },
-  { id: 15, name: "Olivia Green", email: "olivia@example.com", subscribed: true },
-  { id: 16, name: "Ethan Scott", email: "ethan@example.com", subscribed: true },
-  { id: 17, name: "Mia Adams", email: "mia@example.com", subscribed: true },
-  { id: 18, name: "Lucas Allen", email: "lucas@example.com", subscribed: false },
-  { id: 19, name: "Chloe Young", email: "chloe@example.com", subscribed: true },
-  { id: 20, name: "Henry King", email: "henry@example.com", subscribed: true },
-  { id: 21, name: "Grace Hall", email: "grace@example.com", subscribed: false },
-  { id: 22, name: "Mason Wright", email: "mason@example.com", subscribed: true },
-  { id: 23, name: "Lily Baker", email: "lily@example.com", subscribed: true },
-  { id: 24, name: "Jackson Hill", email: "jackson@example.com", subscribed: true },
-  { id: 25, name: "Zoe Nelson", email: "zoe@example.com", subscribed: false },
-  { id: 26, name: "Benjamin Carter", email: "benjamin@example.com", subscribed: true },
-  { id: 27, name: "Amelia Mitchell", email: "amelia@example.com", subscribed: true },
-  { id: 28, name: "Daniel Perez", email: "daniel@example.com", subscribed: true },
-  { id: 29, name: "Harper Roberts", email: "harper@example.com", subscribed: false },
-  { id: 30, name: "Logan Turner", email: "logan@example.com", subscribed: true },
-];
 
 const ITEMS_PER_PAGE = 10;
 
-const getStatusStyle = (subscribed: boolean) =>
-  subscribed
-    ? "border border-[#b8e8c6] bg-[#e8f7ee] text-[#21864a]"
-    : "border border-[#dfe4ea] bg-[#f2f4f7] text-[#7c8490]";
-
 export default function EmailListPage() {
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showExportModal, setShowExportModal] = useState(false);
 
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoading(true);
+      setFetchError("");
+      try {
+        const response = await baseApi.get(ENDPOINTS.getUsers);
+        if (response.data && Array.isArray(response.data)) {
+          setUsers(response.data);
+        } else if (response.data?.results && Array.isArray(response.data.results)) {
+          setUsers(response.data.results);
+        } else {
+          setFetchError("Invalid data format from server");
+        }
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          setFetchError(err.response?.data?.message || "Failed to load users");
+        } else {
+          setFetchError("Failed to load users");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
   const filteredRecords = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) {
-      return EMAIL_RECORDS;
-    }
-
-    return EMAIL_RECORDS.filter(
-      (record) =>
-        record.name.toLowerCase().includes(term) ||
-        record.email.toLowerCase().includes(term),
+    if (!term) return users;
+    return users.filter(
+      (user) =>
+        user.name?.toLowerCase().includes(term) ||
+        user.email?.toLowerCase().includes(term),
     );
-  }, [searchTerm]);
+  }, [searchTerm, users]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / ITEMS_PER_PAGE));
 
@@ -79,9 +68,7 @@ export default function EmailListPage() {
   }, [filteredRecords, currentPage, totalPages]);
 
   const goToPage = (page: number) => {
-    if (page < 1 || page > totalPages) {
-      return;
-    }
+    if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
   };
 
@@ -91,17 +78,11 @@ export default function EmailListPage() {
   };
 
   const buildCsv = () => {
-    const rows = filteredRecords.map((record) => [
-      record.name,
-      record.email,
-      record.subscribed ? "Subscribed" : "Unsubscribed",
-    ]);
+    const rows = filteredRecords.map((user) => [user.name, user.email]);
 
-    const csvRows = [["User Name", "Email", "Subscription Status"], ...rows]
+    const csvRows = [["User Name", "Email"], ...rows]
       .map((row) =>
-        row
-          .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
-          .join(","),
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
       )
       .join("\n");
 
@@ -126,67 +107,77 @@ export default function EmailListPage() {
         </div>
 
         <div className="space-y-4 p-4 sm:p-5">
-<div className="flex items-center gap-3">
-  <label className="flex h-11 flex-1 items-center gap-2 rounded-xl border border-[#d8dde4] bg-[#eceef2] px-3">
-    <FiSearch className="text-[#8d95a0]" size={16} />
-    <input
-      type="text"
-      value={searchTerm}
-      onChange={(event) => handleSearch(event.target.value)}
-      placeholder="Search users..."
-      className="w-full bg-transparent text-[14px] text-[#3a4048] outline-none placeholder:text-[#9aa1ab]"
-    />
-  </label>
+          <div className="flex items-center gap-3">
+            <label className="flex h-11 flex-1 items-center gap-2 rounded-xl border border-[#d8dde4] bg-[#eceef2] px-3">
+              <FiSearch className="text-[#8d95a0]" size={16} />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => handleSearch(event.target.value)}
+                placeholder="Search users..."
+                className="w-full bg-transparent text-[14px] text-[#3a4048] outline-none placeholder:text-[#9aa1ab]"
+              />
+            </label>
 
-  <button
-    type="button"
-    onClick={() => setShowExportModal(true)}
-    className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#d8dde4] bg-[#f7f7f8] px-4 text-[14px] font-medium text-[#2d323a]"
-  >
-    <FiDownload size={14} />
-    Export CSV
-  </button>
-</div>
+            <button
+              type="button"
+              onClick={() => setShowExportModal(true)}
+              disabled={isLoading || users.length === 0}
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#d8dde4] bg-[#f7f7f8] px-4 text-[14px] font-medium text-[#2d323a] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FiDownload size={14} />
+              Download CSV
+            </button>
+          </div>
 
           <div className="overflow-hidden rounded-2xl border border-[#d8dde4] bg-[#f7f7f8]">
             <div className="overflow-x-auto">
-<table className="w-full border-collapse text-left">
-  <thead>
-    <tr className="border-b border-[#e1e6ed] text-[13px] text-[#6f7784]">
-      <th className="px-4 py-3 font-medium lg:text-[20px]">
-        User Name
-      </th>
-      <th className="px-4 py-3 font-medium lg:text-[20px]">
-        Email
-      </th>
-    </tr>
-  </thead>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-[#e1e6ed] text-[13px] text-[#6f7784]">
+                    <th className="px-4 py-3 font-medium lg:text-[20px]">
+                      User Name
+                    </th>
+                    <th className="px-4 py-3 font-medium lg:text-[20px]">
+                      Email
+                    </th>
+                  </tr>
+                </thead>
 
-  <tbody>
-    {paginatedRecords.length === 0 ? (
-      <tr>
-        <td
-          colSpan={2}
-          className="px-4 py-8 text-center text-[14px] text-[#7f8793]"
-        >
-          No records found.
-        </td>
-      </tr>
-    ) : (
-      paginatedRecords.map((record) => (
-        <tr
-          key={record.id}
-          className="border-b border-[#e7ebf0] text-[14px] text-[#3a4048]"
-        >
-          <td className="px-4 py-3">{record.name}</td>
-          <td className="px-4 py-3 text-[#6b7280]">
-            {record.email}
-          </td>
-        </tr>
-      ))
-    )}
-  </tbody>
-</table>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={2} className="px-4 py-8 text-center text-[14px] text-[#7f8793]">
+                        Loading users...
+                      </td>
+                    </tr>
+                  ) : fetchError ? (
+                    <tr>
+                      <td colSpan={2} className="px-4 py-8 text-center text-[14px] text-[#cf3f3f]">
+                        {fetchError}
+                      </td>
+                    </tr>
+                  ) : paginatedRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="px-4 py-8 text-center text-[14px] text-[#7f8793]">
+                        No records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedRecords.map((user) => (
+                      <tr
+                        key={user.id}
+                        className="border-b border-[#e7ebf0] text-[14px] text-[#3a4048]"
+                      >
+                        <td className="px-4 py-3">{user.name}</td>
+                        <td className="px-4 py-3 text-[#6b7280]">
+                          {user.email}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
 
             <div className="flex flex-col gap-3 border-t border-[#e1e6ed] px-4 py-3 text-[13px] text-[#6f7784] sm:flex-row sm:items-center sm:justify-between">
@@ -257,7 +248,7 @@ export default function EmailListPage() {
 
             <p className="text-[14px] text-[#737b86]">
               Export all {filteredRecords.length} email records as a CSV file. This will include user
-              names, emails, and subscription status.
+              names and emails.
             </p>
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:gap-3">
