@@ -3,7 +3,7 @@ name: Deploy Paulobika Frontend Dashboard
 on:
   push:
     branches:
-      - main # আপনার ড্যাশবোর্ডের মেইন ব্রাঞ্চের নাম এখানে দিন
+      - main
 
 jobs:
   deploy:
@@ -20,10 +20,10 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          # ১. ড্যাশবোর্ড ডিরেক্টরিতে যাওয়া
+          # ১. ড্যাশবোর্ড ডিরেক্টরিতে যাওয়া
           cd ~/paulobika-dashboard
           
-          # ২. কোড ফোর্স রিসেট করা
+          # ২. কোড ফোর্স রিসেট করা (Git pull এরর এড়াতে)
           git fetch origin main
           git reset --hard origin/main
           
@@ -31,5 +31,8 @@ jobs:
           npm install
           npm run build
           
-          # ৪. PM2 দিয়ে ড্যাশবোর্ড রিস্টার্ট করা (এখানে sudo লাগবে না)
-          pm2 restart paulobika-dashboard
+          # ৪. ৩০০০ পোর্টের কনফ্লিক্ট এড়াতে নির্দিষ্টভাবে ৩০০১ পোর্টে PM2 রিস্টার্ট বা স্টার্ট করা
+          pm2 restart paulobika-dashboard || pm2 start npm --name "paulobika-dashboard" -- start -- -p 3001
+          
+          # ৫. লাইভ কনফিগারেশন সেভ করে রাখা
+          pm2 save
