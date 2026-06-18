@@ -216,18 +216,18 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Or divider */}
-        <p className="text-center text-sm text-gray-400">Or</p>
+        {/* Or divider
+        <p className="text-center text-sm text-gray-400">Or</p> */}
 
         {/* Social buttons */}
-        <div className="flex items-center justify-center gap-5">
+        {/* <div className="flex items-center justify-center gap-5">
           <button className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center shadow-sm cursor-pointer hover:shadow-md transition">
             <FcGoogle size={22} />
           </button>
           <button className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center shadow-sm cursor-pointer hover:shadow-md transition">
             <FaApple size={22} className="text-gray-800" />
           </button>
-        </div>
+        </div> */}
 
         {/* Sign up */}
         {/* <p className="text-center text-sm text-gray-500">

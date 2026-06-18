@@ -575,14 +575,14 @@ export default function UserManagementPage() {
                           <Link href={`/admin/userManagement/${user.id}`} className="text-[#3b82f6] cursor-pointer" aria-label={`View details of ${user.userName}`}>
                             <FiEye size={15} />
                           </Link>
-                          <button
+                          {/* <button
                             type="button"
                             onClick={() => handleDeleteClick(user.id, user.userName)}
                             className="text-[#ef4444] cursor-pointer"
                             aria-label={`Delete ${user.userName}`}
                           >
                             <FiTrash2 size={15} />
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>
